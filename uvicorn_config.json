@@ -1,0 +1,8 @@
+{
+  "app": "hr_agent.main:app",
+  "reload": true,
+  "reload_dirs": ["hr_agent"],
+  "reload_excludes": ["logs", "*.log", "*.db", "*.pyc"],
+  "host": "0.0.0.0",
+  "port": 8000
+}
