@@ -83,10 +83,17 @@ class Settings(BaseSettings):
     github_enrich_profiles: bool = True
     github_demo_mode: bool = False
 
+    # ── CORS ──────────────────────────────────────────────────────────────────
+    cors_origins: str = "http://localhost:5173,https://hr-agent-72pq.onrender.com"
+
     # ── Security / JWT ────────────────────────────────────────────────────────
     secret_key: str = "dev-secret-change-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @property
     def score_weights(self) -> ScoreWeights:
