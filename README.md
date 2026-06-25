@@ -37,6 +37,10 @@ hr_agent/
     └── reranking.txt
 migrations/                 # Alembic migrations
 tests/                      # pytest test suite
+frontend/                   # React + TypeScript + Vite UI
+├── src/                    # Pages, components, API client
+├── package.json
+└── vite.config.ts          # Dev server + API proxy to :8000
 ```
 
 ---
@@ -73,6 +77,50 @@ uvicorn hr_agent.main:app --reload
 ```
 
 API docs available at: http://localhost:8000/docs
+
+---
+
+## Frontend setup
+
+The web UI lives in `frontend/`. It is a React + TypeScript app built with Vite and Tailwind CSS.
+
+### Prerequisites
+
+- **Node.js 20+** (LTS recommended — matches the frontend Docker image)
+- **npm** (included with Node.js)
+- **Backend running** on `http://localhost:8000` (see [Quick start](#quick-start) above)
+
+### 1. Install dependencies
+
+```bash
+cd frontend
+npm install
+```
+
+### 2. Start the development server
+
+```bash
+npm run dev
+```
+
+Open **http://localhost:5173** in your browser.
+
+The Vite dev server proxies `/api` to the backend at `http://localhost:8000`, so make sure the API is up before using the UI:
+
+```bash
+# from the project root (in a separate terminal)
+uvicorn hr_agent.main:app --reload
+```
+
+Sign in at `/login` with your backend credentials.
+
+### Other frontend commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run build` | Type-check and build a production bundle to `dist/` |
+| `npm run preview` | Serve the production build locally |
+| `npm run lint` | Run ESLint |
 
 ---
 
