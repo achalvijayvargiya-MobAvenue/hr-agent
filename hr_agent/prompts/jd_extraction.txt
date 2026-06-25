@@ -8,7 +8,7 @@ Schema:
 
 {
   "title": "<exact job title>",
-  "normalized_role": "<standardized role category>",
+  "normalized_role": "<concise natural-language role label, e.g. 'Senior Backend Engineer' or 'Corporate Legal Counsel'>",
   "experience_min": <integer or null>,
   "experience_max": <integer or null>,
   "employment_type": "<Full-time | Part-time | Contract | Internship | Temporary | Freelance | null>",
@@ -25,60 +25,6 @@ Schema:
   "summary": "<2-3 sentence role summary>"
 }
 
-Role Normalization Rules
-
-Map the job title to one of the following categories:
-
-Engineering:
-- backend_engineer
-- frontend_engineer
-- fullstack_engineer
-- mobile_engineer
-- data_engineer
-- ml_engineer
-- devops_engineer
-- qa_engineer
-- security_engineer
-
-Data & AI:
-- data_scientist
-- data_analyst
-- business_analyst
-- ai_engineer
-
-Product & Design:
-- product_manager
-- project_manager
-- scrum_master
-- ui_ux_designer
-- graphic_designer
-
-Business Functions:
-- sales
-- marketing
-- customer_success
-- customer_support
-- operations
-- finance
-- accounting
-- procurement
-- supply_chain
-
-People & Administration:
-- recruiter
-- hr_generalist
-- talent_acquisition
-- learning_and_development
-
-Leadership:
-- engineering_manager
-- director
-- vp
-- executive
-
-Other:
-- other
-
 Extraction Rules
 
 1. Use only information explicitly present in the JD.
@@ -90,13 +36,14 @@ Extraction Rules
    - Postgres → PostgreSQL
    - Node → Node.js
    - MS Excel → Microsoft Excel
-6. Experience values must be integers only.
-7. Extract mandatory skills into must_have_skills.
-8. Extract preferred/optional skills into good_to_have_skills.
-9. Deduplicate all skills.
-10. Keep skill names concise and standardized.
-11. Summary must be factual and derived from the JD only.
-12. Return valid JSON only.
+6. For normalized_role, derive a short natural-language label from the job title, responsibilities, and required skills. Use clear professional wording as it would appear on a job board. Do NOT map to a fixed category list and do NOT use generic values like "other".
+7. Experience values must be integers only.
+8. Extract mandatory skills into must_have_skills.
+9. Extract preferred/optional skills into good_to_have_skills.
+10. Deduplicate all skills.
+11. Keep skill names concise and standardized.
+12. Summary must be factual and derived from the JD only.
+13. Return valid JSON only.
 
 Job Description:
 

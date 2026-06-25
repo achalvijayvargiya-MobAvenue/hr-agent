@@ -4,6 +4,19 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+class ScoreBreakdown(BaseModel):
+    """Structured breakdown of how the final score was computed."""
+
+    rule_score: float | None
+    vector_score: float | None
+    llm_score: float | None
+    final_score: float | None
+    rule_weight: float
+    vector_weight: float
+    llm_weight: float
+    summary: str
+
+
 class MatchEntry(BaseModel):
     """A single candidate entry in a ranked match result."""
 
@@ -17,6 +30,8 @@ class MatchEntry(BaseModel):
     llm_score: float | None
     final_score: float | None
     explanation: str | None
+    source_name: str | None = None
+    score_breakdown: ScoreBreakdown | None = None
 
 
 class MatchResponse(BaseModel):
@@ -33,6 +48,12 @@ class RecomputeResponse(BaseModel):
     job_id: str
     triggered: bool
     message: str
+
+
+class RecomputeRequest(BaseModel):
+    job_id: str
+    source_filter: list[str] | None = None
+    top_k: int | None = None
 
 
 class LLMRankItem(BaseModel):

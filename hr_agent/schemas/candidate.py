@@ -5,6 +5,7 @@ CVExtracted       — exact JSON structure GPT-4o must return (mirrors cv_extrac
 CandidateResponse — what the API returns to callers.
 """
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -28,6 +29,7 @@ class CVExtracted(BaseModel):
     Every field added to the prompt must be added here so Pydantic validates it.
     """
 
+    email: str | None = None
     candidate_name: str
     current_title: str | None = None
     normalized_role: str
@@ -49,7 +51,7 @@ class CVExtracted(BaseModel):
 class CandidateResponse(BaseModel):
     """API response shape for a Candidate resource — includes all extracted fields."""
 
-    id: str
+    email: str
     name: str | None
     current_title: str | None
     normalized_role: str | None
@@ -66,6 +68,7 @@ class CandidateResponse(BaseModel):
     responsibilities: list[str]
     seniority_level: str | None
     summary: str | None
+    source_name: str = "local_kb"
     status: str
     created_at: datetime
 
@@ -73,6 +76,45 @@ class CandidateResponse(BaseModel):
 
 
 class CandidateUploadResponse(BaseModel):
-    candidate_id: str
+    import_id: str
     status: str
     message: str
+    conflict: bool = False
+    candidate_email: str | None = None
+
+
+class CandidateImportResponse(BaseModel):
+    import_id: str
+    status: str
+    source_name: str
+    proposed_email: str | None
+    existing_email: str | None
+    name: str | None
+    location: str | None
+    extracted_data: dict | None
+    error_message: str | None
+    created_at: datetime
+
+
+class CandidateConflictSummary(BaseModel):
+    """Existing candidate snapshot shown alongside a conflicting import."""
+
+    email: str
+    name: str | None
+    current_title: str | None
+    current_company: str | None
+    location: str | None
+    source_name: str
+    summary: str | None
+
+
+class CandidateConflictResponse(BaseModel):
+    import_id: str
+    proposed_email: str
+    source_name: str
+    proposed: dict
+    existing: CandidateConflictSummary
+
+
+class ResolveImportRequest(BaseModel):
+    action: Literal["update", "keep"]

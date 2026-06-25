@@ -70,11 +70,18 @@ def test_experience_no_requirement():
 # ── role_match_score ───────────────────────────────────────────────────────────
 
 def test_role_exact_match():
+    assert role_match_score("Backend Engineer", "Backend Engineer") == 1.0
     assert role_match_score("backend_engineer", "backend_engineer") == 1.0
 
 
+def test_role_semantic_overlap():
+    score = role_match_score("Senior Backend Engineer", "Backend Software Engineer")
+    assert score > 0.3
+
+
 def test_role_mismatch():
-    assert role_match_score("frontend_engineer", "backend_engineer") == 0.0
+    score = role_match_score("Frontend Engineer", "Corporate Legal Counsel")
+    assert score == 0.0
 
 
 def test_role_unknown():
@@ -100,11 +107,12 @@ def test_industry_no_requirement():
 def _make_job(**kwargs) -> SimpleNamespace:
     defaults = dict(
         id="JOB-001",
-        normalized_role="backend_engineer",
+        normalized_role="Backend Engineer",
         experience_min=4,
         experience_max=7,
         must_have_skills=["Python", "FastAPI"],
         industry="Financial Services",
+        hard_checks=None,
     )
     defaults.update(kwargs)
     return SimpleNamespace(**defaults)
@@ -113,9 +121,13 @@ def _make_job(**kwargs) -> SimpleNamespace:
 def _make_candidate(**kwargs) -> SimpleNamespace:
     defaults = dict(
         id="CV-001",
-        normalized_role="backend_engineer",
+        normalized_role="Backend Engineer",
         years_experience=5,
         skills=["Python", "FastAPI", "PostgreSQL"],
+        tools_and_technologies=[],
+        certifications=[],
+        seniority_level=None,
+        location=None,
         industries=["Financial Services"],
     )
     defaults.update(kwargs)
@@ -141,9 +153,28 @@ def test_hard_filter_experience_too_high():
 
 
 def test_hard_filter_missing_skill():
+    # Skill checks only trigger when the job has explicit hard_checks configured.
     passed, reason = passes_hard_filter(
         _make_candidate(skills=["Python"]),  # missing FastAPI
-        _make_job(),
+        _make_job(hard_checks={"must_have_skills": ["FastAPI"]}),
     )
     assert passed is False
     assert "fastapi" in reason.lower()
+
+
+def test_hard_filter_education_requirement():
+    passed, reason = passes_hard_filter(
+        _make_candidate(education=[{"degree": "B.Sc Computer Science", "institution": "MIT"}]),
+        _make_job(hard_checks={"education_requirements": ["Computer Science"]}),
+    )
+    assert passed is True
+    assert reason == ""
+
+
+def test_hard_filter_education_requirement_missing():
+    passed, reason = passes_hard_filter(
+        _make_candidate(education=[{"degree": "B.A Economics", "institution": "NYU"}]),
+        _make_job(hard_checks={"education_requirements": ["Computer Science"]}),
+    )
+    assert passed is False
+    assert "education" in reason.lower()

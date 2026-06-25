@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, Float, JSON, String, Text, func
@@ -10,7 +9,7 @@ from hr_agent.database import Base
 class Candidate(Base):
     __tablename__ = "candidates"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    email: Mapped[str] = mapped_column(String, primary_key=True)
 
     # Core fields (original)
     name: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -32,10 +31,12 @@ class Candidate(Base):
     responsibilities: Mapped[list | None] = mapped_column(JSON, nullable=True)
     seniority_level: Mapped[str | None] = mapped_column(String, nullable=True)
 
+    source_name: Mapped[str] = mapped_column(String, nullable=False, default="local_kb")
+
     raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )
 
     def __repr__(self) -> str:
-        return f"<Candidate id={self.id!r} name={self.name!r}>"
+        return f"<Candidate email={self.email!r} name={self.name!r}>"

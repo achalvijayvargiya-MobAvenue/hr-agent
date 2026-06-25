@@ -1,0 +1,23 @@
+[
+  {
+    "name": "Jane Doe",
+    "email": "jane.doe@example.com",
+    "location": "Mumbai, India",
+    "summary": "Senior software engineer with 8 years of Python experience. Specialised in backend services using FastAPI, Django, and PostgreSQL. Led a team of 5 engineers to deliver a real-time logistics platform handling 50k events/day. Strong background in REST API design, async programming, and cloud deployments on AWS. Contact: jane.doe@example.com",
+    "url": "https://linkedin.com/in/janedoe"
+  },
+  {
+    "name": "Rahul Mehta",
+    "email": "rahul.mehta@example.com",
+    "location": "Bangalore, India",
+    "summary": "Full-stack developer with 5 years of experience in React, TypeScript, and Node.js. Built and maintained SaaS dashboards used by 10k+ daily active users. Comfortable with CI/CD pipelines, Docker, and Kubernetes. Currently exploring machine learning integrations for product personalisation. Email: rahul.mehta@example.com",
+    "url": "https://linkedin.com/in/rahulmehta"
+  },
+  {
+    "name": "Priya Sharma",
+    "email": "priya.sharma@example.com",
+    "location": "Delhi, India",
+    "summary": "Data scientist with 6 years of experience in NLP and ML model deployment. Proficient in Python, scikit-learn, PyTorch, and Hugging Face Transformers. Delivered multiple production-grade text classification and information-extraction pipelines. Holds an M.Tech in Computer Science from IIT Delhi. Contact priya.sharma@example.com",
+    "url": "https://linkedin.com/in/priyasharma"
+  }
+]

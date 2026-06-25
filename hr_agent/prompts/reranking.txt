@@ -6,7 +6,7 @@ Score each candidate 0–100 based on overall fit. Consider ALL of the following
   3. Seniority level and years of experience fit
   4. Industry background alignment
   5. Certifications and education requirements
-  6. Career trajectory and role alignment
+  6. Career trajectory and role alignment — compare job title, normalized_role, responsibilities, and candidate current_title, normalized_role, experience_areas, and employment history semantically. Normalized Role is a free-form descriptive label, NOT a fixed code — do NOT require exact string matches.
 
 Scoring guide:
   90–100 : Excellent — meets or exceeds all key requirements, strong alignment across dimensions

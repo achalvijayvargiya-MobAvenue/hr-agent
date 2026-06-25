@@ -135,12 +135,37 @@ def refresh_all_statuses():
             if data.get("title"):
                 st.session_state.jobs[jid]["title"] = data["title"]
 
-    for cid in list(st.session_state.candidates.keys()):
-        data = api_get(f"/candidates/{cid}")
+    for key, info in list(st.session_state.candidates.items()):
+        email = info.get("email")
+        if email:
+            data = api_get(f"/candidates/{email}")
+        else:
+            data = api_get(f"/candidates/imports/{key}")
+            if data and data.get("proposed_email"):
+                data = api_get(f"/candidates/{data['proposed_email']}")
         if data:
-            st.session_state.candidates[cid]["status"] = data.get("status", "PENDING")
+            st.session_state.candidates[key]["status"] = data.get("status", "PENDING")
             if data.get("name"):
-                st.session_state.candidates[cid]["name"] = data["name"]
+                st.session_state.candidates[key]["name"] = data["name"]
+            if data.get("email"):
+                st.session_state.candidates[key]["email"] = data["email"]
+
+
+def poll_import_until_done(import_id: str, status_placeholder) -> str:
+    """Poll GET /candidates/imports/{import_id} until terminal status."""
+    for attempt in range(POLL_MAX_ATTEMPTS):
+        data = api_get(f"/candidates/imports/{import_id}")
+        if data is None:
+            return "FAILED"
+        status = data.get("status", "PROCESSING")
+        status_placeholder.info(
+            f"Processing... {status_badge(status)}  "
+            f"(attempt {attempt + 1}/{POLL_MAX_ATTEMPTS})"
+        )
+        if status in ("COMPLETED", "CONFLICT", "FAILED", "DISCARDED"):
+            return status
+        time.sleep(POLL_INTERVAL_SEC)
+    return "TIMEOUT"
 
 
 def poll_until_ready(entity_type: str, entity_id: str, status_placeholder) -> str:
@@ -513,28 +538,43 @@ with tab_cv:
                     )
 
             if result:
-                cid = result["candidate_id"]
-                st.session_state.candidates[cid] = {
+                import_id = result["import_id"]
+                st.session_state.candidates[import_id] = {
                     "name": cv_file.name.replace(".pdf", ""),
                     "filename": cv_file.name,
-                    "status": "EXTRACTED",
+                    "status": "PROCESSING",
                 }
-                upload_ph.success(f"Uploaded — candidate_id: `{cid}`")
+                upload_ph.success(f"Uploaded — import_id: `{import_id}` (processing in background)")
 
                 status_ph = st.empty()
-                final_status = poll_until_ready("candidate", cid, status_ph)
+                # Poll imports until completed, conflict, or failed
+                final_status = poll_import_until_done(import_id, status_ph)
 
-                if final_status == "EMBEDDED":
-                    data = api_get(f"/candidates/{cid}")
-                    if data and data.get("name"):
-                        st.session_state.candidates[cid]["name"] = data["name"]
-                    st.session_state.candidates[cid]["status"] = "EMBEDDED"
-                    status_ph.success(
-                        f"{cv_file.name} — {status_badge('EMBEDDED')}  "
-                        f"Name: **{st.session_state.candidates[cid]['name']}**"
+                if final_status == "COMPLETED":
+                    imports = api_get("/candidates/imports") or []
+                    row = next((i for i in imports if i.get("import_id") == import_id), None)
+                    email = row.get("proposed_email") if row else None
+                    if email:
+                        data = api_get(f"/candidates/{email}")
+                        if data and data.get("name"):
+                            st.session_state.candidates[import_id]["name"] = data["name"]
+                            st.session_state.candidates[import_id]["email"] = email
+                        st.session_state.candidates[import_id]["status"] = data.get("status", "EMBEDDED") if data else "COMPLETED"
+                        status_ph.success(
+                            f"{cv_file.name} — {status_badge('EMBEDDED')}  "
+                            f"Name: **{st.session_state.candidates[import_id]['name']}**  "
+                            f"Email: `{email}`"
+                        )
+                    else:
+                        status_ph.success(f"{cv_file.name} — processing completed.")
+                elif final_status == "CONFLICT":
+                    st.session_state.candidates[import_id]["status"] = "CONFLICT"
+                    status_ph.warning(
+                        f"{cv_file.name} — duplicate email detected. "
+                        f"Resolve in the React UI under Candidates → Duplicate emails."
                     )
                 elif final_status == "FAILED":
-                    st.session_state.candidates[cid]["status"] = "FAILED"
+                    st.session_state.candidates[import_id]["status"] = "FAILED"
                     status_ph.error(f"{cv_file.name} — processing failed.")
                 else:
                     status_ph.warning(f"{cv_file.name} — timed out.")
@@ -548,17 +588,19 @@ with tab_cv:
             refresh_all_statuses()
             st.rerun()
 
-        for cid, info in st.session_state.candidates.items():
+        for key, info in st.session_state.candidates.items():
             with st.container(border=True):
                 h1, h2, h3 = st.columns([3, 2, 1])
                 h1.markdown(f"**{info['name']}**")
-                h1.caption(f"`{cid}`")
+                label = info.get("email") or key
+                h1.caption(f"`{label}`")
                 h2.markdown(info.get("filename", "—"))
                 h3.markdown(status_badge(info["status"]))
 
                 if info["status"] in ("STRUCTURED", "EMBEDDED"):
                     with st.expander("👤 Extracted Profile"):
-                        cv_data = api_get(f"/candidates/{cid}")
+                        email = info.get("email")
+                        cv_data = api_get(f"/candidates/{email}") if email else None
                         if cv_data:
                             c1, c2 = st.columns(2)
                             with c1:

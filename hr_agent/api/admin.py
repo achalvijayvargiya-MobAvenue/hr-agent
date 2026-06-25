@@ -10,8 +10,9 @@ import logging
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from hr_agent.api.deps import get_db
+from hr_agent.api.deps import get_db, require_role
 from hr_agent.models.candidate import Candidate
+from hr_agent.models.candidate_import import CandidateImport
 from hr_agent.models.embedding import Embedding
 from hr_agent.models.job import Job
 from hr_agent.models.match_result import MatchResult
@@ -20,7 +21,7 @@ from hr_agent.schemas.candidate import CandidateResponse
 from hr_agent.schemas.job import JobResponse
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_role("admin"))])
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -38,7 +39,7 @@ def _job_status(job: Job, db: Session) -> str:
 def _candidate_status(candidate: Candidate, db: Session) -> str:
     log = (
         db.query(ProcessingLog)
-        .filter_by(entity_id=candidate.id, entity_type="candidate")
+        .filter_by(entity_id=candidate.email, entity_type="candidate")
         .order_by(ProcessingLog.updated_at.desc())
         .first()
     )
@@ -55,6 +56,7 @@ def clear_all_data(db: Session = Depends(get_db)):
         (MatchResult, "match_results"),
         (Embedding, "embeddings"),
         (ProcessingLog, "processing_logs"),
+        (CandidateImport, "candidate_imports"),
         (Candidate, "candidates"),
         (Job, "jobs"),
     ]:
@@ -107,7 +109,7 @@ def list_all_candidates(db: Session = Depends(get_db)):
         status = _candidate_status(c, db)
         results.append(
             CandidateResponse(
-                id=c.id,
+                email=c.email,
                 name=c.name,
                 current_title=c.current_title,
                 normalized_role=c.normalized_role,

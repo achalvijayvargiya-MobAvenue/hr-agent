@@ -10,6 +10,7 @@ Four-stage pipeline:
 """
 import json
 import logging
+import re
 from pathlib import Path
 
 from openai import OpenAI
@@ -68,10 +69,49 @@ def experience_band_score(
     return 1.0
 
 
+_ROLE_STOP_WORDS = frozenset({
+    "a", "an", "and", "for", "in", "of", "or", "the", "to", "with",
+})
+
+
+def _role_tokens(role: str) -> set[str]:
+    """Tokenise a free-form role label for semantic overlap scoring."""
+    cleaned = re.sub(r"[_\-/]", " ", role.lower())
+    return {
+        token
+        for token in re.split(r"[^\w]+", cleaned)
+        if len(token) > 2 and token not in _ROLE_STOP_WORDS
+    }
+
+
 def role_match_score(candidate_role: str | None, job_role: str | None) -> float:
+    """
+    Semantic overlap between free-form role labels.
+
+    Exact match → 1.0. Token Jaccard + substring checks for related wording
+    (e.g. 'Senior Backend Engineer' vs 'Backend Software Engineer').
+    """
     if not candidate_role or not job_role:
         return 0.5
-    return 1.0 if candidate_role.lower() == job_role.lower() else 0.0
+
+    cand = candidate_role.strip()
+    job = job_role.strip()
+    if cand.lower() == job.lower():
+        return 1.0
+
+    cand_norm = cand.lower().replace("_", " ")
+    job_norm = job.lower().replace("_", " ")
+    if cand_norm in job_norm or job_norm in cand_norm:
+        return 0.9
+
+    cand_tokens = _role_tokens(cand)
+    job_tokens = _role_tokens(job)
+    if not cand_tokens or not job_tokens:
+        return 0.5
+
+    overlap = cand_tokens & job_tokens
+    union = cand_tokens | job_tokens
+    return round(len(overlap) / len(union), 4)
 
 
 def industry_match_score(
@@ -116,10 +156,11 @@ def passes_hard_filter(candidate: Candidate, job: Job) -> tuple[bool, str]:
         must_have_skills       → candidate skills + tools_and_technologies
         tools_and_technologies → candidate tools_and_technologies
         certifications         → candidate certifications
+        education_requirements → candidate education degree/institution text
 
       Scalar fields — candidate's value must match the required value (when non-empty):
         seniority_level   → exact match (case-insensitive)
-        normalized_role   → exact match (case-insensitive)
+        normalized_role   → semantic overlap (free-form labels, not exact codes)
         industry          → candidate's industries list must contain it
         location          → substring match in either direction
 
@@ -147,6 +188,11 @@ def passes_hard_filter(candidate: Candidate, job: Job) -> tuple[bool, str]:
     cand_tools = {s.lower().strip() for s in (candidate.tools_and_technologies or [])}
     cand_certs = {s.lower().strip() for s in (candidate.certifications or [])}
     cand_industries = {i.lower().strip() for i in (candidate.industries or [])}
+    cand_education_strings = [
+        f"{edu.get('degree') or ''} {edu.get('institution') or ''}".lower().strip()
+        for edu in (candidate.education or [])
+        if isinstance(edu, dict)
+    ]
 
     LIST_FIELD_POOLS = {
         "must_have_skills": cand_skill_pool,
@@ -156,6 +202,16 @@ def passes_hard_filter(candidate: Candidate, job: Job) -> tuple[bool, str]:
 
     for field, required in hard_checks.items():
         if not required:
+            continue
+
+        if field == "education_requirements":
+            items = required if isinstance(required, list) else [required]
+            for item in items:
+                req = str(item).lower().strip()
+                if not req:
+                    continue
+                if not any(req in edu_text for edu_text in cand_education_strings):
+                    return False, f"missing hard-required education: '{item}'"
             continue
 
         if field in LIST_FIELD_POOLS:
@@ -176,9 +232,9 @@ def passes_hard_filter(candidate: Candidate, job: Job) -> tuple[bool, str]:
                 )
 
         elif field == "normalized_role":
-            cand_val = (candidate.normalized_role or "").lower().strip()
-            req_val = str(required).lower().strip()
-            if cand_val and req_val and cand_val != req_val:
+            cand_val = (candidate.normalized_role or "").strip()
+            req_val = str(required).strip()
+            if cand_val and req_val and role_match_score(cand_val, req_val) < 0.35:
                 return (
                     False,
                     f"role mismatch: required '{required}', "
@@ -225,10 +281,18 @@ class MatchingService:
 
     # ── Public interface ──────────────────────────────────────────────────────
 
-    def run(self, db: Session, job_id: str) -> list[MatchResult]:
+    def run(
+        self,
+        db: Session,
+        job_id: str,
+        source_filter: list[str] | None = None,
+        top_k: int | None = None,
+    ) -> list[MatchResult]:
         """
         Execute the full pipeline for `job_id`.
         Deletes previous results for this job first — re-running is always safe.
+        Optional source_filter limits which candidates are considered by source.
+        Optional top_k truncates the final ranked list.
         """
         logger.info("=" * 60)
         logger.info("[MATCH] Starting pipeline for job: %s", job_id)
@@ -243,13 +307,17 @@ class MatchingService:
             job.must_have_skills, job.tools_and_technologies, job.industry,
         )
 
-        candidates = db.query(Candidate).filter(Candidate.normalized_role.isnot(None)).all()
+        query = db.query(Candidate).filter(Candidate.normalized_role.isnot(None))
+        if source_filter:
+            query = query.filter(Candidate.source_name.in_(source_filter))
+            logger.info("[MATCH] source_filter=%s applied.", source_filter)
+        candidates = query.all()
         if not candidates:
             logger.warning("[MATCH] No structured candidates in DB — returning empty results.")
             return []
 
         logger.info("[MATCH] Found %d structured candidates to evaluate.", len(candidates))
-        cand_map: dict[str, Candidate] = {c.id: c for c in candidates}
+        cand_map: dict[str, Candidate] = {c.email: c for c in candidates}
 
         # Clear stale results
         deleted = db.query(MatchResult).filter_by(job_id=job_id).delete()
@@ -265,22 +333,22 @@ class MatchingService:
             if passed:
                 logger.info(
                     "[FILTER] ✓ PASS  %s (%s) — %s yrs  skills: %s",
-                    candidate.name or candidate.id,
-                    candidate.id,
+                    candidate.name or candidate.email,
+                    candidate.email,
                     candidate.years_experience,
                     candidate.skills,
                 )
             else:
                 logger.info(
                     "[FILTER] ✗ FAIL  %s (%s) — reason: %s",
-                    candidate.name or candidate.id,
-                    candidate.id,
+                    candidate.name or candidate.email,
+                    candidate.email,
                     reason,
                 )
             all_results.append(
                 MatchResult(
                     job_id=job_id,
-                    candidate_id=candidate.id,
+                    candidate_id=candidate.email,
                     is_filtered=not passed,
                     filter_reason=reason or None,
                 )
@@ -326,11 +394,11 @@ class MatchingService:
             )
             logger.info(
                 "[RULE]  %s (%s) — skill_jaccard=%.2f  exp=%.2f  role=%.2f  ind=%.2f  → rule_score=%.4f",
-                c.name or c.id, c.id, skill, exp, role, ind, result.rule_score,
+                c.name or c.email, c.email, skill, exp, role, ind, result.rule_score,
             )
             logger.debug(
                 "[RULE]  %s — cand_combined=%s  jd_combined=%s",
-                c.name or c.id, cand_combined, job_combined
+                c.name or c.email, cand_combined, job_combined
             )
 
         # ── Stage 3: Vector scores ─────────────────────────────────────────
@@ -369,7 +437,7 @@ class MatchingService:
             c = cand_map[result.candidate_id]
             logger.info(
                 "[FINAL] %s (%s) — rule=%.4f  vector=%.4f  llm=%.4f  → final_score=%.4f",
-                c.name or c.id, c.id,
+                c.name or c.email, c.email,
                 result.rule_score or 0, result.vector_score or 0,
                 result.llm_score or 0, result.final_score,
             )
@@ -386,11 +454,15 @@ class MatchingService:
             logger.info(
                 "[RANKING] #%d  %s (%s)  final=%.4f  explanation: %s",
                 rank,
-                c.name or c.id,
-                c.id,
+                c.name or c.email,
+                c.email,
                 result.final_score,
                 (result.explanation or "—")[:100],
             )
+
+        if top_k is not None:
+            ranked = ranked[:top_k]
+            logger.info("[MATCH] top_k=%d applied — returning %d results.", top_k, len(ranked))
 
         self._persist(db, all_results)
         logger.info(
@@ -447,7 +519,7 @@ class MatchingService:
                 )
                 logger.info(
                     "[VECTOR] %s (%s) → vector_score=%.4f",
-                    c.name or c.id, c.id, result.vector_score,
+                    c.name or c.email, c.email, result.vector_score,
                 )
 
     def _apply_llm_scores(
@@ -588,7 +660,7 @@ class MatchingService:
             ) or "not available"
 
             sections.append(
-                f"candidate_id          : {c.id}\n"
+                f"candidate_id          : {c.email}\n"
                 f"name                  : {c.name or 'unknown'}\n"
                 f"current_title         : {c.current_title or 'unknown'}\n"
                 f"current_company       : {c.current_company or 'unknown'}\n"

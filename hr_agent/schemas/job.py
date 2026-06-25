@@ -8,7 +8,7 @@ HardChecksUpdate — request body for PUT /jobs/{id}/hard-checks.
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class JDExtracted(BaseModel):
@@ -56,6 +56,9 @@ class JobResponse(BaseModel):
     seniority_level: str | None
     summary: str | None
     hard_checks: dict[str, Any] | None = None
+    candidates_required: int | None = None
+    position_status: str = "DRAFT"
+    created_by: str | None = None
     status: str
     created_at: datetime
 
@@ -73,6 +76,91 @@ class HardChecksUpdate(BaseModel):
     Empty dict removes all hard checks from the job.
     """
     hard_checks: dict[str, Any] = Field(default_factory=dict)
+
+
+class PositionStatusUpdate(BaseModel):
+    position_status: str
+
+    @field_validator("position_status")
+    @classmethod
+    def must_be_valid_status(cls, v: str) -> str:
+        allowed = {"DRAFT", "OPEN", "CLOSED"}
+        if v not in allowed:
+            raise ValueError(f"position_status must be one of {sorted(allowed)}, got {v!r}")
+        return v
+
+
+class PositionManualCreate(BaseModel):
+    title: str
+    normalized_role: str | None = None
+    department: str | None = None
+    industry: str | None = None
+    location: str | None = None
+    employment_type: str | None = None
+    seniority_level: str | None = None
+    experience_min: int | None = None
+    experience_max: int | None = None
+    candidates_required: int | None = None
+    must_have_skills: list[str] = Field(default_factory=list)
+    good_to_have_skills: list[str] = Field(default_factory=list)
+    tools_and_technologies: list[str] = Field(default_factory=list)
+    education_requirements: list[str] = Field(default_factory=list)
+    certifications: list[str] = Field(default_factory=list)
+    responsibilities: list[str] = Field(default_factory=list)
+    summary: str | None = None
+
+
+class PositionApprove(BaseModel):
+    title: str | None = None
+    normalized_role: str | None = None
+    department: str | None = None
+    industry: str | None = None
+    location: str | None = None
+    employment_type: str | None = None
+    seniority_level: str | None = None
+    experience_min: int | None = None
+    experience_max: int | None = None
+    candidates_required: int | None = None
+    must_have_skills: list[str] | None = None
+    good_to_have_skills: list[str] | None = None
+    tools_and_technologies: list[str] | None = None
+    education_requirements: list[str] | None = None
+    certifications: list[str] | None = None
+    responsibilities: list[str] | None = None
+    summary: str | None = None
+    hard_checks: dict | None = None
+
+
+class PositionUpdate(BaseModel):
+    title: str | None = None
+    normalized_role: str | None = None
+    department: str | None = None
+    industry: str | None = None
+    location: str | None = None
+    employment_type: str | None = None
+    seniority_level: str | None = None
+    experience_min: int | None = None
+    experience_max: int | None = None
+    candidates_required: int | None = None
+    must_have_skills: list[str] | None = None
+    good_to_have_skills: list[str] | None = None
+    tools_and_technologies: list[str] | None = None
+    education_requirements: list[str] | None = None
+    certifications: list[str] | None = None
+    responsibilities: list[str] | None = None
+    summary: str | None = None
+    hard_checks: dict | None = None
+    position_status: str | None = None
+
+    @field_validator("position_status")
+    @classmethod
+    def must_be_valid_status(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        allowed = {"DRAFT", "OPEN", "CLOSED"}
+        if v not in allowed:
+            raise ValueError(f"position_status must be one of {sorted(allowed)}, got {v!r}")
+        return v
 
 
 class JobUploadResponse(BaseModel):

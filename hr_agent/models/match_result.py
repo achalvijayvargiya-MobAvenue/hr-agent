@@ -12,7 +12,7 @@ class MatchResult(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"), nullable=False)
-    candidate_id: Mapped[str] = mapped_column(String, ForeignKey("candidates.id"), nullable=False)
+    candidate_id: Mapped[str] = mapped_column(String, ForeignKey("candidates.email"), nullable=False)
 
     # Hard-filter outcome
     is_filtered: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

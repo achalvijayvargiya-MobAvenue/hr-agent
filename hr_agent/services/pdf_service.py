@@ -14,6 +14,17 @@ logger = logging.getLogger(__name__)
 MIN_TEXT_LENGTH = 50
 
 
+def _sanitize_text(text: str) -> str:
+    """
+    Remove characters PostgreSQL cannot store in text columns.
+    PDFs converted from Word (.docx → .pdf) often embed NUL (0x00) bytes.
+    """
+    # NUL bytes cause: ValueError: A string literal cannot contain NUL (0x00) characters.
+    text = text.replace("\x00", "")
+    # Strip other non-printable control chars except common whitespace
+    return "".join(ch for ch in text if ch in "\n\r\t" or ord(ch) >= 32)
+
+
 class PDFExtractionError(Exception):
     """Raised when text cannot be extracted from the provided PDF bytes."""
 
@@ -37,6 +48,8 @@ def extract_text(file_bytes: bytes) -> str:
     except Exception as exc:
         logger.exception("[PDF] pdfminer failed to parse the PDF: %s", exc)
         raise PDFExtractionError(f"PDF parsing failed: {exc}") from exc
+
+    text = _sanitize_text(text)
 
     # Collapse excessive whitespace while preserving paragraph breaks
     cleaned = "\n".join(

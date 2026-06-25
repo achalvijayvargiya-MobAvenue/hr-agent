@@ -6,24 +6,115 @@ GET  /jobs/{job_id} — return the structured job record with current processing
 """
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from hr_agent.api.deps import (
     extract_pdf_text,
+    get_current_user,
     get_db,
     get_embedding_service,
     get_extraction_service,
 )
+from hr_agent.core.errors import ConflictError, NotFoundError
+from hr_agent.models.embedding import Embedding
 from hr_agent.models.job import Job
+from hr_agent.models.match_result import MatchResult
 from hr_agent.models.processing_log import ProcessingLog, ProcessingStatus
-from hr_agent.schemas.job import HardChecksUpdate, JobResponse, JobUploadResponse
+from hr_agent.models.user import User
+from hr_agent.schemas.job import (
+    HardChecksUpdate,
+    JobResponse,
+    JobUploadResponse,
+    PositionApprove,
+    PositionManualCreate,
+    PositionUpdate,
+)
 from hr_agent.services.embedding_service import EmbeddingService
 from hr_agent.services.extraction_service import ExtractionError, ExtractionService
 from hr_agent.services.pdf_service import PDFExtractionError
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/jobs", tags=["jobs"])
+router = APIRouter(prefix="/jobs", tags=["jobs"], dependencies=[Depends(get_current_user)])
+
+
+def _job_proc_status(db: Session, job_id: str) -> str:
+    log = (
+        db.query(ProcessingLog)
+        .filter_by(entity_id=job_id, entity_type="job")
+        .order_by(ProcessingLog.updated_at.desc())
+        .first()
+    )
+    return log.status if log else ProcessingStatus.PENDING
+
+
+def _job_to_response(job: Job, db: Session) -> JobResponse:
+    return JobResponse(
+        id=job.id,
+        title=job.title,
+        normalized_role=job.normalized_role,
+        experience_min=job.experience_min,
+        experience_max=job.experience_max,
+        employment_type=job.employment_type,
+        location=job.location,
+        must_have_skills=job.must_have_skills or [],
+        good_to_have_skills=job.good_to_have_skills or [],
+        education_requirements=job.education_requirements or [],
+        certifications=job.certifications or [],
+        responsibilities=job.responsibilities or [],
+        tools_and_technologies=job.tools_and_technologies or [],
+        seniority_level=job.seniority_level,
+        department=job.department,
+        industry=job.industry,
+        summary=job.summary,
+        hard_checks=job.hard_checks,
+        candidates_required=job.candidates_required,
+        position_status=job.position_status,
+        created_by=job.created_by,
+        status=_job_proc_status(db, job.id),
+        created_at=job.created_at,
+    )
+
+
+def _apply_position_fields(job: Job, body: PositionApprove | PositionUpdate) -> None:
+    if body.title is not None:
+        job.title = body.title
+    if body.normalized_role is not None:
+        job.normalized_role = body.normalized_role
+    if body.department is not None:
+        job.department = body.department
+    if body.industry is not None:
+        job.industry = body.industry
+    if body.location is not None:
+        job.location = body.location
+    if body.employment_type is not None:
+        job.employment_type = body.employment_type
+    if body.seniority_level is not None:
+        job.seniority_level = body.seniority_level
+    if body.experience_min is not None:
+        job.experience_min = body.experience_min
+    if body.experience_max is not None:
+        job.experience_max = body.experience_max
+    if body.candidates_required is not None:
+        job.candidates_required = body.candidates_required
+    if body.must_have_skills is not None:
+        job.must_have_skills = body.must_have_skills
+    if body.good_to_have_skills is not None:
+        job.good_to_have_skills = body.good_to_have_skills
+    if body.tools_and_technologies is not None:
+        job.tools_and_technologies = body.tools_and_technologies
+    if body.education_requirements is not None:
+        job.education_requirements = body.education_requirements
+    if body.certifications is not None:
+        job.certifications = body.certifications
+    if body.responsibilities is not None:
+        job.responsibilities = body.responsibilities
+    if body.summary is not None:
+        job.summary = body.summary
+    if body.hard_checks is not None:
+        job.hard_checks = body.hard_checks
+    if isinstance(body, PositionUpdate) and body.position_status is not None:
+        job.position_status = body.position_status
 
 
 # ── Background task ────────────────────────────────────────────────────────────
@@ -86,12 +177,13 @@ def _process_job(
         job.industry = extracted.industry
         job.summary = extracted.summary
 
+        job.position_status = "DRAFT"
         if log:
             log.status = ProcessingStatus.STRUCTURED
         db.commit()
         logger.info(
             "[BG:JOB] Job %s structured — title=%r  role=%r  exp=%s–%s  seniority=%r  "
-            "must_have=%s  tools=%s  status→STRUCTURED",
+            "must_have=%s  tools=%s  status→STRUCTURED  position_status→DRAFT",
             job_id, extracted.title, extracted.normalized_role,
             extracted.experience_min, extracted.experience_max,
             extracted.seniority_level, extracted.must_have_skills,
@@ -176,20 +268,54 @@ async def upload_job(
     )
 
 
-@router.get("/{job_id}", response_model=JobResponse)
-def get_job(job_id: str, db: Session = Depends(get_db)):
-    """Return the structured job record with its current processing status."""
-    job = db.query(Job).filter_by(id=job_id).first()
-    if job is None:
-        raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found.")
-
-    log = (
-        db.query(ProcessingLog)
-        .filter_by(entity_id=job_id, entity_type="job")
-        .order_by(ProcessingLog.updated_at.desc())
-        .first()
+@router.post("/manual", response_model=JobResponse, status_code=201)
+def create_manual_position(
+    body: PositionManualCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> JobResponse:
+    """
+    Create a new Open Position by filling in fields manually.
+    The position starts in DRAFT status and is immediately marked as STRUCTURED
+    (no LLM extraction needed).
+    """
+    job = Job(
+        title=body.title,
+        normalized_role=body.normalized_role,
+        department=body.department,
+        industry=body.industry,
+        location=body.location,
+        employment_type=body.employment_type,
+        seniority_level=body.seniority_level,
+        experience_min=body.experience_min,
+        experience_max=body.experience_max,
+        candidates_required=body.candidates_required,
+        must_have_skills=body.must_have_skills or [],
+        good_to_have_skills=body.good_to_have_skills or [],
+        tools_and_technologies=body.tools_and_technologies or [],
+        education_requirements=body.education_requirements or [],
+        certifications=body.certifications or [],
+        responsibilities=body.responsibilities or [],
+        summary=body.summary,
+        position_status="DRAFT",
+        created_by=current_user.id,
     )
-    status = log.status if log else ProcessingStatus.PENDING
+    db.add(job)
+    db.flush()
+
+    log = ProcessingLog(
+        entity_type="job",
+        entity_id=job.id,
+        status=ProcessingStatus.STRUCTURED,
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(job)
+
+    logger.info(
+        "[API:JOB] Manual position created — job_id=%s  title=%r  created_by=%s",
+        job.id, job.title, current_user.id,
+    )
 
     return JobResponse(
         id=job.id,
@@ -210,17 +336,118 @@ def get_job(job_id: str, db: Session = Depends(get_db)):
         industry=job.industry,
         summary=job.summary,
         hard_checks=job.hard_checks,
-        status=status,
+        candidates_required=job.candidates_required,
+        position_status=job.position_status,
+        created_by=job.created_by,
+        status=ProcessingStatus.STRUCTURED,
         created_at=job.created_at,
     )
 
 
-@router.put("/{job_id}/hard-checks", response_model=JobResponse)
-def update_hard_checks(
-    job_id: str,
-    body: HardChecksUpdate,
+@router.get("", response_model=list[JobResponse])
+def list_jobs(
+    status: str | None = None,
+    created_by: str | None = None,
     db: Session = Depends(get_db),
-):
+) -> list[JobResponse]:
+    """List all positions, optionally filtered by position_status or created_by."""
+    query = db.query(Job)
+    if status is not None:
+        query = query.filter(Job.position_status == status)
+    if created_by is not None:
+        query = query.filter(Job.created_by == created_by)
+    jobs = query.order_by(Job.created_at.desc()).all()
+
+    results = []
+    for job in jobs:
+        log = (
+            db.query(ProcessingLog)
+            .filter_by(entity_id=job.id, entity_type="job")
+            .order_by(ProcessingLog.updated_at.desc())
+            .first()
+        )
+        proc_status = log.status if log else ProcessingStatus.PENDING
+        results.append(JobResponse(
+            id=job.id,
+            title=job.title,
+            normalized_role=job.normalized_role,
+            experience_min=job.experience_min,
+            experience_max=job.experience_max,
+            employment_type=job.employment_type,
+            location=job.location,
+            must_have_skills=job.must_have_skills or [],
+            good_to_have_skills=job.good_to_have_skills or [],
+            education_requirements=job.education_requirements or [],
+            certifications=job.certifications or [],
+            responsibilities=job.responsibilities or [],
+            tools_and_technologies=job.tools_and_technologies or [],
+            seniority_level=job.seniority_level,
+            department=job.department,
+            industry=job.industry,
+            summary=job.summary,
+            hard_checks=job.hard_checks,
+            candidates_required=job.candidates_required,
+            position_status=job.position_status,
+            created_by=job.created_by,
+            status=proc_status,
+            created_at=job.created_at,
+        ))
+    return results
+
+
+@router.get("/{job_id}", response_model=JobResponse)
+def get_job(job_id: str, db: Session = Depends(get_db)):
+    """Return the structured job record with its current processing status."""
+    job = db.query(Job).filter_by(id=job_id).first()
+    if job is None:
+        raise NotFoundError(message=f"Job {job_id!r} not found.")
+    return _job_to_response(job, db)
+
+
+@router.put("/{job_id}", response_model=JobResponse)
+def update_position(
+    job_id: str,
+    body: PositionUpdate,
+    db: Session = Depends(get_db),
+) -> JobResponse:
+    """
+    Update an existing position. Any non-None fields in the body overwrite stored values.
+    Supports editing all extracted fields, candidates_required, and position_status.
+    """
+    job = db.query(Job).filter_by(id=job_id).first()
+    if job is None:
+        raise NotFoundError(message=f"Job {job_id!r} not found.")
+
+    _apply_position_fields(job, body)
+    db.commit()
+    db.refresh(job)
+
+    logger.info(
+        "[API:JOB] Position updated — job_id=%s  position_status=%s",
+        job_id, job.position_status,
+    )
+    return _job_to_response(job, db)
+
+
+@router.delete("/{job_id}", status_code=204)
+def delete_position(job_id: str, db: Session = Depends(get_db)) -> Response:
+    """Delete a position and all related match results, embeddings, and processing logs."""
+    job = db.query(Job).filter_by(id=job_id).first()
+    if job is None:
+        raise NotFoundError(message=f"Job {job_id!r} not found.")
+
+    db.query(MatchResult).filter_by(job_id=job_id).delete()
+    db.query(Embedding).filter_by(entity_type="job", entity_id=job_id).delete()
+    db.query(ProcessingLog).filter_by(entity_type="job", entity_id=job_id).delete()
+    db.delete(job)
+    db.commit()
+
+    logger.info("[API:JOB] Position deleted — job_id=%s", job_id)
+    return Response(status_code=204)
+
+
+@router.put("/{job_id}/hard-checks", response_model=JobResponse)
+def update_hard_checks(job_id: str, body: HardChecksUpdate, db: Session = Depends(get_db)):
     """
     Save hard-check criteria for a job.
     On the next matching run, candidates that fail these checks are eliminated.
@@ -228,7 +455,7 @@ def update_hard_checks(
     """
     job = db.query(Job).filter_by(id=job_id).first()
     if job is None:
-        raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found.")
+        raise NotFoundError(message=f"Job {job_id!r} not found.")
 
     job.hard_checks = body.hard_checks or None
     db.commit()
@@ -265,6 +492,115 @@ def update_hard_checks(
         industry=job.industry,
         summary=job.summary,
         hard_checks=job.hard_checks,
+        candidates_required=job.candidates_required,
+        position_status=job.position_status,
+        created_by=job.created_by,
         status=status,
+        created_at=job.created_at,
+    )
+
+
+@router.post("/{job_id}/approve", response_model=JobResponse)
+def approve_position(
+    job_id: str,
+    body: PositionApprove,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> JobResponse:
+    """
+    Review and approve a DRAFT position, promoting it to OPEN.
+    Any non-None fields in the request body overwrite the stored values.
+    Returns 409 if the position is already OPEN or CLOSED.
+    """
+    job = db.query(Job).filter_by(id=job_id).first()
+    if job is None:
+        raise NotFoundError(message=f"Job {job_id!r} not found.")
+
+    if job.position_status in ("OPEN", "CLOSED"):
+        raise ConflictError(
+            message=f"Position is already {job.position_status} and cannot be re-approved.",
+        )
+
+    # Apply any overriding edits from the body
+    if body.title is not None:
+        job.title = body.title
+    if body.normalized_role is not None:
+        job.normalized_role = body.normalized_role
+    if body.department is not None:
+        job.department = body.department
+    if body.industry is not None:
+        job.industry = body.industry
+    if body.location is not None:
+        job.location = body.location
+    if body.employment_type is not None:
+        job.employment_type = body.employment_type
+    if body.seniority_level is not None:
+        job.seniority_level = body.seniority_level
+    if body.experience_min is not None:
+        job.experience_min = body.experience_min
+    if body.experience_max is not None:
+        job.experience_max = body.experience_max
+    if body.candidates_required is not None:
+        job.candidates_required = body.candidates_required
+    if body.must_have_skills is not None:
+        job.must_have_skills = body.must_have_skills
+    if body.good_to_have_skills is not None:
+        job.good_to_have_skills = body.good_to_have_skills
+    if body.tools_and_technologies is not None:
+        job.tools_and_technologies = body.tools_and_technologies
+    if body.education_requirements is not None:
+        job.education_requirements = body.education_requirements
+    if body.certifications is not None:
+        job.certifications = body.certifications
+    if body.responsibilities is not None:
+        job.responsibilities = body.responsibilities
+    if body.summary is not None:
+        job.summary = body.summary
+    if body.hard_checks is not None:
+        job.hard_checks = body.hard_checks
+
+    job.position_status = "OPEN"
+
+    log = (
+        db.query(ProcessingLog)
+        .filter_by(entity_id=job_id, entity_type="job")
+        .order_by(ProcessingLog.updated_at.desc())
+        .first()
+    )
+    if log and log.status in (ProcessingStatus.EXTRACTED, ProcessingStatus.PENDING):
+        log.status = ProcessingStatus.STRUCTURED
+
+    db.commit()
+    db.refresh(job)
+
+    proc_status = log.status if log else ProcessingStatus.STRUCTURED
+    logger.info(
+        "[API:JOB] Position approved — job_id=%s  approved_by=%s  position_status→OPEN",
+        job_id, current_user.id,
+    )
+
+    return JobResponse(
+        id=job.id,
+        title=job.title,
+        normalized_role=job.normalized_role,
+        experience_min=job.experience_min,
+        experience_max=job.experience_max,
+        employment_type=job.employment_type,
+        location=job.location,
+        must_have_skills=job.must_have_skills or [],
+        good_to_have_skills=job.good_to_have_skills or [],
+        education_requirements=job.education_requirements or [],
+        certifications=job.certifications or [],
+        responsibilities=job.responsibilities or [],
+        tools_and_technologies=job.tools_and_technologies or [],
+        seniority_level=job.seniority_level,
+        department=job.department,
+        industry=job.industry,
+        summary=job.summary,
+        hard_checks=job.hard_checks,
+        candidates_required=job.candidates_required,
+        position_status=job.position_status,
+        created_by=job.created_by,
+        status=proc_status,
         created_at=job.created_at,
     )

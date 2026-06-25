@@ -4,7 +4,14 @@ These tests do not need an OpenAI key or a DB — pure unit tests.
 """
 import pytest
 
-from hr_agent.services.pdf_service import PDFExtractionError, extract_text
+from hr_agent.services.pdf_service import PDFExtractionError, _sanitize_text, extract_text
+
+
+def test_sanitize_text_removes_nul_bytes():
+    dirty = "Senior PHP Developer\x00with\x00NUL bytes"
+    clean = _sanitize_text(dirty)
+    assert "\x00" not in clean
+    assert clean == "Senior PHP DeveloperwithNUL bytes"
 
 
 def test_empty_bytes_raises():

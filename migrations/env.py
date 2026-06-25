@@ -15,6 +15,11 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+import os
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
+config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
+
 target_metadata = Base.metadata
 
 

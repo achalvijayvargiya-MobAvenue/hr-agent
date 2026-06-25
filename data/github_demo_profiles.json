@@ -1,0 +1,71 @@
+[
+  {
+    "login": "pydev-mumbai",
+    "name": "Arjun Patel",
+    "location": "Mumbai, India",
+    "company": "FinTech Labs",
+    "bio": "Backend engineer building payment APIs with Python and FastAPI. Open source contributor.",
+    "html_url": "https://github.com/pydev-mumbai",
+    "public_repos": 24,
+    "followers": 89,
+    "hireable": true,
+    "repos": [
+      {
+        "name": "payments-api",
+        "language": "Python",
+        "description": "High-throughput payment processing service with FastAPI and PostgreSQL",
+        "stargazers_count": 42
+      },
+      {
+        "name": "async-workers",
+        "language": "Python",
+        "description": "Celery task workers for event-driven microservices",
+        "stargazers_count": 18
+      }
+    ]
+  },
+  {
+    "login": "react-builder-blr",
+    "name": "Sneha Krishnan",
+    "location": "Bangalore, India",
+    "company": "@saas-startup",
+    "bio": "Full-stack developer. React, TypeScript, Node.js. Building developer tools.",
+    "html_url": "https://github.com/react-builder-blr",
+    "public_repos": 31,
+    "followers": 156,
+    "hireable": null,
+    "repos": [
+      {
+        "name": "dashboard-kit",
+        "language": "TypeScript",
+        "description": "Reusable React dashboard components with Tailwind CSS",
+        "stargazers_count": 67
+      },
+      {
+        "name": "api-gateway",
+        "language": "JavaScript",
+        "description": "Lightweight Node.js API gateway with rate limiting",
+        "stargazers_count": 23
+      }
+    ]
+  },
+  {
+    "login": "devops-rahul",
+    "name": "Rahul Sharma",
+    "location": "Pune, India",
+    "company": "CloudOps Consulting",
+    "bio": "DevOps engineer | Kubernetes, Terraform, AWS | CI/CD pipelines",
+    "html_url": "https://github.com/devops-rahul",
+    "public_repos": 19,
+    "followers": 210,
+    "hireable": true,
+    "repos": [
+      {
+        "name": "k8s-gitops",
+        "language": "HCL",
+        "description": "GitOps deployment patterns for EKS with Terraform and ArgoCD",
+        "stargazers_count": 95
+      }
+    ]
+  }
+]

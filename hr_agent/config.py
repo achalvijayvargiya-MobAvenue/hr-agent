@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     # ── Logging ───────────────────────────────────────────────────────────────
     log_level: str = "INFO"           # DEBUG | INFO | WARNING | ERROR
     log_file: str = "logs/hr_agent.log"
+    log_backup_days: int = 30         # daily rotated files to retain
 
     # ── Database ──────────────────────────────────────────────────────────────
     database_url: str = "sqlite:///./hr_agent.db"
@@ -75,6 +76,17 @@ class Settings(BaseSettings):
     experience_weight: float = 0.2
     role_weight: float = 0.2
     industry_weight: float = 0.2
+
+    # ── GitHub candidate source ─────────────────────────────────────────────────
+    github_token: str = ""
+    github_max_results: int = 30
+    github_enrich_profiles: bool = True
+    github_demo_mode: bool = False
+
+    # ── Security / JWT ────────────────────────────────────────────────────────
+    secret_key: str = "dev-secret-change-in-production"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60
 
     @property
     def score_weights(self) -> ScoreWeights:
