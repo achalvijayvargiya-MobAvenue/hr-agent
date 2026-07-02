@@ -1,0 +1,96 @@
+{
+  "version": "2026.07",
+  "description": "Education degree ontology — canonical IDs with aliases for fuzzy matching",
+  "entries": [
+    {
+      "id": "llb",
+      "label": "Bachelor of Laws (LLB)",
+      "aliases": ["llb", "l l b", "bachelor of laws", "bachelor of legal science", "licentiate of law", "law degree", "legal degree"]
+    },
+    {
+      "id": "llm",
+      "label": "Master of Laws (LLM)",
+      "aliases": ["llm", "l l m", "master of laws", "masters of laws"]
+    },
+    {
+      "id": "ba_llb",
+      "label": "BA LLB (Integrated Law)",
+      "aliases": ["ba llb", "b a llb", "bballb", "integrated law", "ba.l.l.b"]
+    },
+    {
+      "id": "btech_cs",
+      "label": "B.Tech / BE Computer Science",
+      "aliases": ["btech computer science", "b tech cse", "be computer science", "bachelor of technology computer", "b e cse", "btech cs", "b tech cs", "computer science engineering degree"]
+    },
+    {
+      "id": "btech_it",
+      "label": "B.Tech Information Technology",
+      "aliases": ["btech it", "b tech information technology", "be it", "bachelor of technology it"]
+    },
+    {
+      "id": "bsc_cs",
+      "label": "B.Sc Computer Science",
+      "aliases": ["bsc computer science", "b sc cs", "bachelor of science computer science", "bsc cs", "b sc computer science"]
+    },
+    {
+      "id": "mtech_cs",
+      "label": "M.Tech Computer Science",
+      "aliases": ["mtech computer science", "m tech cse", "master of technology computer", "mtech cs"]
+    },
+    {
+      "id": "mba",
+      "label": "MBA",
+      "aliases": ["mba", "master of business administration", "masters in business administration", "post graduate diploma in management", "pgdm"]
+    },
+    {
+      "id": "bba",
+      "label": "BBA",
+      "aliases": ["bba", "bachelor of business administration", "b b a"]
+    },
+    {
+      "id": "bcom",
+      "label": "B.Com / Bachelor of Commerce",
+      "aliases": ["bcom", "b com", "bachelor of commerce", "bachelors of commerce"]
+    },
+    {
+      "id": "mcom",
+      "label": "M.Com / Master of Commerce",
+      "aliases": ["mcom", "m com", "master of commerce"]
+    },
+    {
+      "id": "ca",
+      "label": "Chartered Accountant (CA)",
+      "aliases": ["chartered accountant", "ca", "c a", "aca", "fca", "chartered accountancy"]
+    },
+    {
+      "id": "cs_prof",
+      "label": "Company Secretary (CS)",
+      "aliases": ["company secretary", "cs professional", "icsi", "associate company secretary"]
+    },
+    {
+      "id": "cfa",
+      "label": "CFA",
+      "aliases": ["cfa", "chartered financial analyst", "c f a"]
+    },
+    {
+      "id": "bca",
+      "label": "BCA",
+      "aliases": ["bca", "b c a", "bachelor of computer applications"]
+    },
+    {
+      "id": "mca",
+      "label": "MCA",
+      "aliases": ["mca", "m c a", "master of computer applications"]
+    },
+    {
+      "id": "phd",
+      "label": "PhD / Doctorate",
+      "aliases": ["phd", "ph d", "doctorate", "doctoral degree", "dphil"]
+    },
+    {
+      "id": "diploma",
+      "label": "Diploma",
+      "aliases": ["diploma", "polytechnic diploma"]
+    }
+  ]
+}

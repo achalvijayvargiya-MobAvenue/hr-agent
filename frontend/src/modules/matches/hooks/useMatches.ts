@@ -6,10 +6,14 @@ import api from '../../../lib/api'
 export interface ScoreBreakdown {
   rule_score: number | null
   vector_score: number | null
+  rerank_score?: number | null
   llm_score: number | null
   final_score: number | null
+  requirement_fit_score?: number | null
   rule_weight: number
   vector_weight: number
+  rerank_weight?: number | null
+  requirement_fit_weight?: number | null
   llm_weight: number
   summary: string
 }
@@ -22,8 +26,11 @@ export interface MatchEntry {
   filter_reason: string | null
   rule_score: number | null
   vector_score: number | null
+  rerank_score?: number | null
   llm_score: number | null
   final_score: number | null
+  requirement_fit_score?: number | null
+  requirement_gaps?: string[] | null
   explanation: string | null
   source_name: string | null
   score_breakdown: ScoreBreakdown | null

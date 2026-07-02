@@ -31,6 +31,15 @@ class Candidate(Base):
     responsibilities: Mapped[list | None] = mapped_column(JSON, nullable=True)
     seniority_level: Mapped[str | None] = mapped_column(String, nullable=True)
 
+    # Domain taxonomy (Phase 1)
+    domain_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    domain_label: Mapped[str | None] = mapped_column(String, nullable=True)
+    subdomain_codes: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    subdomain_labels: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    domain_confidence: Mapped[float | None] = mapped_column(nullable=True)
+    domain_source: Mapped[str | None] = mapped_column(String, nullable=True)  # auto | manual
+    domain_evidence: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
     source_name: Mapped[str] = mapped_column(String, nullable=False, default="local_kb")
 
     raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)

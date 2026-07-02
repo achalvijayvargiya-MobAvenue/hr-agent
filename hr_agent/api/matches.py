@@ -30,7 +30,10 @@ def _build_match_response(job_id: str, results: list[MatchResult], db: Session) 
     name_map: dict[str, str | None] = {c.email: c.name for c in candidates}
     source_map: dict[str, str | None] = {c.email: c.source_name for c in candidates}
 
-    sw = get_settings().score_weights
+    settings = get_settings()
+    sw = settings.score_weights
+    fsw = settings.final_score_weights
+    phase4 = settings.llm_explanation_only
 
     ranked = sorted(
         [r for r in results if not r.is_filtered and r.final_score is not None],
@@ -41,21 +44,48 @@ def _build_match_response(job_id: str, results: list[MatchResult], db: Session) 
     entries: list[MatchEntry] = []
     rank = 1
     for result in ranked:
-        breakdown = ScoreBreakdown(
-            rule_score=result.rule_score,
-            vector_score=result.vector_score,
-            llm_score=result.llm_score,
-            final_score=result.final_score,
-            rule_weight=sw.rule,
-            vector_weight=sw.vector,
-            llm_weight=sw.llm,
-            summary=(
-                f"{int(sw.rule * 100)}% rule + {int(sw.vector * 100)}% vector + "
-                f"{int(sw.llm * 100)}% LLM = {result.final_score:.2f}"
+        if phase4:
+            summary = (
+                f"{int(fsw.requirement_fit * 100)}% fit + "
+                f"{int(fsw.retrieval * 100)}% retrieval + "
+                f"{int(fsw.rerank * 100)}% rerank = {result.final_score:.2f}"
                 if result.final_score is not None
                 else "N/A"
-            ),
-        )
+            )
+            breakdown = ScoreBreakdown(
+                rule_score=result.rule_score,
+                vector_score=result.vector_score,
+                rerank_score=result.rerank_score,
+                llm_score=None,
+                final_score=result.final_score,
+                requirement_fit_score=result.requirement_fit_score,
+                rule_weight=0.0,
+                vector_weight=fsw.retrieval,
+                rerank_weight=fsw.rerank,
+                requirement_fit_weight=fsw.requirement_fit,
+                llm_weight=0.0,
+                summary=summary,
+            )
+        else:
+            breakdown = ScoreBreakdown(
+                rule_score=result.rule_score,
+                vector_score=result.vector_score,
+                rerank_score=result.rerank_score,
+                llm_score=result.llm_score,
+                final_score=result.final_score,
+                requirement_fit_score=result.requirement_fit_score,
+                rule_weight=sw.rule,
+                vector_weight=sw.vector,
+                rerank_weight=None,
+                requirement_fit_weight=None,
+                llm_weight=sw.llm,
+                summary=(
+                    f"{int(sw.rule * 100)}% rule + {int(sw.vector * 100)}% vector + "
+                    f"{int(sw.llm * 100)}% LLM = {result.final_score:.2f}"
+                    if result.final_score is not None
+                    else "N/A"
+                ),
+            )
         entries.append(
             MatchEntry(
                 rank=rank,
@@ -63,8 +93,11 @@ def _build_match_response(job_id: str, results: list[MatchResult], db: Session) 
                 candidate_name=name_map.get(result.candidate_id),
                 is_filtered=False,
                 filter_reason=None,
+                requirement_fit_score=result.requirement_fit_score,
+                requirement_gaps=None,
                 rule_score=result.rule_score,
                 vector_score=result.vector_score,
+                rerank_score=result.rerank_score,
                 llm_score=result.llm_score,
                 final_score=result.final_score,
                 explanation=result.explanation,
@@ -83,8 +116,11 @@ def _build_match_response(job_id: str, results: list[MatchResult], db: Session) 
                     candidate_name=name_map.get(result.candidate_id),
                     is_filtered=True,
                     filter_reason=result.filter_reason,
+                    requirement_fit_score=result.requirement_fit_score,
+                    requirement_gaps=result.requirement_gaps,
                     rule_score=None,
                     vector_score=None,
+                    rerank_score=None,
                     llm_score=None,
                     final_score=None,
                     explanation=None,
@@ -160,7 +196,7 @@ def recompute_match(
 
         bg_db = SessionLocal()
         try:
-            matching_svc.run(bg_db, job_id, source_filter=source_filter, top_k=top_k)
+            matching_svc.run(bg_db, job_id, source_filter=source_filter, top_k=top_k, refresh=True)
         except Exception as exc:
             logger.exception("Background recompute failed for job %s: %s", job_id, exc)
         finally:

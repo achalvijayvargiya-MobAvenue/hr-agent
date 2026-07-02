@@ -27,6 +27,62 @@ class EmbeddingService:
             settings.embedding_model,
         )
 
+    def fingerprint_model_name(self) -> str:
+        return f"fingerprint:{self._settings.embedding_model}"
+
+    def ensure_fingerprint_embedding(
+        self,
+        db: Session,
+        entity_type: str,
+        entity_id: str,
+        fingerprint_text: str,
+    ) -> np.ndarray | None:
+        """Load or generate a profile-fingerprint embedding vector."""
+        model_name = self.fingerprint_model_name()
+        row = (
+            db.query(Embedding)
+            .filter_by(entity_type=entity_type, entity_id=entity_id, model_name=model_name)
+            .first()
+        )
+        if row:
+            return self._deserialize(row.vector_blob)
+
+        if not fingerprint_text.strip():
+            return None
+
+        logger.info(
+            "[EMBED] Generating fingerprint embedding — entity: %s/%s  chars: %d",
+            entity_type, entity_id, len(fingerprint_text),
+        )
+        vector = self._embed(fingerprint_text)
+        blob = self._serialize(vector)
+        db.add(
+            Embedding(
+                entity_type=entity_type,
+                entity_id=entity_id,
+                model_name=model_name,
+                vector_blob=blob,
+            )
+        )
+        db.flush()
+        return vector
+
+    def load_fingerprint_vector(
+        self, db: Session, entity_type: str, entity_id: str
+    ) -> np.ndarray | None:
+        row = (
+            db.query(Embedding)
+            .filter_by(
+                entity_type=entity_type,
+                entity_id=entity_id,
+                model_name=self.fingerprint_model_name(),
+            )
+            .first()
+        )
+        if row is None:
+            return None
+        return self._deserialize(row.vector_blob)
+
     # ── Public interface ──────────────────────────────────────────────────────
 
     def generate_and_store(

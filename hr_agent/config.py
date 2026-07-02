@@ -9,7 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class ScoreWeights(BaseSettings):
-    """Weights applied at the final score combination stage."""
+    """Legacy weights — used when llm_explanation_only=false."""
 
     rule: float = 0.4
     vector: float = 0.2
@@ -20,6 +20,21 @@ class ScoreWeights(BaseSettings):
         total = self.rule + self.vector + self.llm
         if abs(total - 1.0) > 1e-6:
             raise ValueError(f"score weights must sum to 1.0, got {total:.4f}")
+        return self
+
+
+class FinalScoreWeights(BaseSettings):
+    """Phase 4 final score blend — requirement fit + retrieval + cross-encoder rerank."""
+
+    requirement_fit: float = 0.25
+    retrieval: float = 0.25
+    rerank: float = 0.50
+
+    @model_validator(mode="after")
+    def must_sum_to_one(self) -> "FinalScoreWeights":
+        total = self.requirement_fit + self.retrieval + self.rerank
+        if abs(total - 1.0) > 1e-6:
+            raise ValueError(f"final score weights must sum to 1.0, got {total:.4f}")
         return self
 
 
@@ -64,9 +79,19 @@ class Settings(BaseSettings):
     max_extraction_retries: int = 2
 
     # ── Matching ──────────────────────────────────────────────────────────────
-    top_n_for_rerank: int = 20
+    top_n_for_rerank: int = 50
+    match_pool_only: bool = True
+    llm_explanation_only: bool = True
+    llm_explanation_top_n: int = 15
+    cross_encoder_enabled: bool = True
+    cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
-    # ── Final score weights ───────────────────────────────────────────────────
+    # ── Final score weights (Phase 4) ─────────────────────────────────────────
+    requirement_fit_weight: float = 0.25
+    retrieval_weight: float = 0.25
+    rerank_weight: float = 0.50
+
+    # ── Legacy final score weights (when llm_explanation_only=false) ─────────
     rule_weight: float = 0.4
     vector_weight: float = 0.2
     llm_weight: float = 0.4
@@ -94,6 +119,14 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def final_score_weights(self) -> FinalScoreWeights:
+        return FinalScoreWeights(
+            requirement_fit=self.requirement_fit_weight,
+            retrieval=self.retrieval_weight,
+            rerank=self.rerank_weight,
+        )
 
     @property
     def score_weights(self) -> ScoreWeights:

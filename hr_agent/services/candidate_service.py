@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 from hr_agent.models.candidate import Candidate
 from hr_agent.models.candidate_import import CandidateImport, ImportStatus
 from hr_agent.models.processing_log import ProcessingLog, ProcessingStatus
+from hr_agent.services.profile_fingerprint_service import build_candidate_fingerprint
+from hr_agent.services.domain_classification_service import apply_domain_to_candidate
 from hr_agent.schemas.candidate import CVExtracted
 
 logger = logging.getLogger(__name__)
@@ -113,6 +115,26 @@ def resolve_import_conflict(
     candidate.source_name = import_row.source_name
     apply_extraction_to_candidate(candidate, extracted)
 
+    try:
+        from hr_agent.api.deps import get_domain_classification_service
+
+        domain_svc = get_domain_classification_service()
+        classification = domain_svc.classify_candidate(
+            current_title=extracted.current_title,
+            normalized_role=extracted.normalized_role,
+            seniority_level=extracted.seniority_level,
+            industries=extracted.industries,
+            skills=extracted.skills,
+            tools=extracted.tools_and_technologies,
+            responsibilities=extracted.responsibilities,
+            experience_areas=extracted.experience_areas,
+            education=[e.model_dump() for e in extracted.education],
+            summary=extracted.summary,
+        )
+        apply_domain_to_candidate(candidate, classification)
+    except Exception as exc:
+        logger.warning("[IMPORT] Domain classification failed on update — email=%s: %s", candidate.email, exc)
+
     log = (
         db.query(ProcessingLog)
         .filter_by(entity_id=candidate.email, entity_type="candidate")
@@ -128,6 +150,9 @@ def resolve_import_conflict(
 
     db.flush()
     embedding_svc.generate_and_store(db, "candidate", candidate.email, extracted.summary)
+    embedding_svc.ensure_fingerprint_embedding(
+        db, "candidate", candidate.email, build_candidate_fingerprint(candidate)
+    )
     if log:
         log.status = ProcessingStatus.EMBEDDED
 

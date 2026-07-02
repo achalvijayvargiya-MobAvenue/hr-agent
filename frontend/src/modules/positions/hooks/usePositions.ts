@@ -19,6 +19,13 @@ export interface Position {
   responsibilities: string[]
   seniority_level: string | null
   summary: string | null
+  domain_code: string | null
+  domain_label: string | null
+  subdomain_codes: string[]
+  subdomain_labels: string[]
+  domain_confidence: number | null
+  domain_source: string | null
+  domain_evidence: string[]
   hard_checks: Record<string, unknown> | null
   candidates_required: number | null
   position_status: string

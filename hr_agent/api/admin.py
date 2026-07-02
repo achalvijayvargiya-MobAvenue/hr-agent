@@ -15,6 +15,7 @@ from hr_agent.models.candidate import Candidate
 from hr_agent.models.candidate_import import CandidateImport
 from hr_agent.models.embedding import Embedding
 from hr_agent.models.job import Job
+from hr_agent.models.job_candidate_pool import JobCandidatePool
 from hr_agent.models.match_result import MatchResult
 from hr_agent.models.processing_log import ProcessingLog, ProcessingStatus
 from hr_agent.schemas.candidate import CandidateResponse
@@ -54,6 +55,7 @@ def clear_all_data(db: Session = Depends(get_db)):
     counts = {}
     for model, name in [
         (MatchResult, "match_results"),
+        (JobCandidatePool, "job_candidate_pools"),
         (Embedding, "embeddings"),
         (ProcessingLog, "processing_logs"),
         (CandidateImport, "candidate_imports"),

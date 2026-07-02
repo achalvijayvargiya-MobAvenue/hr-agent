@@ -15,9 +15,12 @@ from hr_agent.database import SessionLocal, get_db  # re-exported so routers imp
 from hr_agent.services.candidate_sources.github import GitHubSource
 from hr_agent.services.candidate_sources.local_kb import LocalKBSource
 from hr_agent.services.candidate_sources.registry import SourceRegistry, source_registry
+from hr_agent.services.domain_classification_service import DomainClassificationService
+from hr_agent.services.cross_encoder_service import CrossEncoderService
 from hr_agent.services.embedding_service import EmbeddingService
 from hr_agent.services.extraction_service import ExtractionService
 from hr_agent.services.matching_service import MatchingService
+from hr_agent.services.pool_service import PoolService
 from hr_agent.services.pdf_service import extract_text as extract_pdf_text  # noqa: F401
 
 __all__ = [
@@ -27,6 +30,9 @@ __all__ = [
     "get_extraction_service",
     "get_embedding_service",
     "get_matching_service",
+    "get_domain_classification_service",
+    "get_cross_encoder_service",
+    "get_pool_service",
     "get_source_registry",
     "extract_pdf_text",
     "get_current_user",
@@ -55,7 +61,28 @@ def get_matching_service() -> MatchingService:
     settings = get_settings()
     client = get_openai_client()
     embedding_svc = EmbeddingService(settings=settings, client=client)
-    return MatchingService(settings=settings, client=client, embedding_service=embedding_svc)
+    cross_encoder_svc = CrossEncoderService(settings=settings)
+    return MatchingService(
+        settings=settings,
+        client=client,
+        embedding_service=embedding_svc,
+        cross_encoder_service=cross_encoder_svc,
+    )
+
+
+def get_domain_classification_service() -> DomainClassificationService:
+    """FastAPI dependency that returns a DomainClassificationService instance."""
+    return DomainClassificationService(settings=get_settings(), client=get_openai_client())
+
+
+def get_pool_service() -> PoolService:
+    """FastAPI dependency that returns a PoolService instance."""
+    return PoolService(settings=get_settings())
+
+
+def get_cross_encoder_service() -> CrossEncoderService:
+    """FastAPI dependency that returns a CrossEncoderService instance."""
+    return CrossEncoderService(settings=get_settings())
 
 
 @lru_cache

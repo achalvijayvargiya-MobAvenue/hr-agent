@@ -6,6 +6,7 @@ from hr_agent.models.candidate import Candidate
 from hr_agent.models.candidate_import import CandidateImport, ImportStatus
 from hr_agent.models.embedding import Embedding
 from hr_agent.models.job import Job
+from hr_agent.models.job_candidate_pool import JobCandidatePool
 from hr_agent.models.match_result import MatchResult
 from hr_agent.models.processing_log import ProcessingLog, ProcessingStatus
 from hr_agent.models.user import User
@@ -14,6 +15,7 @@ from hr_agent.models.user_role import UserRole
 
 __all__ = [
     "Job",
+    "JobCandidatePool",
     "Candidate",
     "CandidateImport",
     "ImportStatus",

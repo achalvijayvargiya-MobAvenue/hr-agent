@@ -2,7 +2,7 @@ from sqlalchemy import UniqueConstraint
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, JSON, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from hr_agent.database import Base
@@ -26,8 +26,13 @@ class MatchResult(Base):
     # Individual stage scores (None until that stage has run)
     rule_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     vector_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    rerank_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     llm_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     final_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # Phase 3 — ontology-based requirement fit
+    requirement_fit_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    requirement_gaps: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
     explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
     computed_at: Mapped[datetime] = mapped_column(
