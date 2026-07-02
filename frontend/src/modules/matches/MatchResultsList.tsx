@@ -22,6 +22,62 @@ function SourceBadge({ source }: { source: string | null }) {
 // ── Score breakdown bar ─────────────────────────────────────────────────────────
 
 function ScoreBar({ breakdown }: { breakdown: ScoreBreakdown }) {
+  const phase4 = breakdown.rerank_weight != null && breakdown.rerank_weight > 0
+
+  if (phase4) {
+    const fitContrib =
+      (breakdown.requirement_fit_score ?? 0) * (breakdown.requirement_fit_weight ?? 0)
+    const retrievalContrib = (breakdown.vector_score ?? 0) * breakdown.vector_weight
+    const rerankContrib = (breakdown.rerank_score ?? 0) * (breakdown.rerank_weight ?? 0)
+    const total = fitContrib + retrievalContrib + rerankContrib || 1
+
+    const fitPct = (fitContrib / total) * 100
+    const retPct = (retrievalContrib / total) * 100
+    const rerPct = (rerankContrib / total) * 100
+
+    return (
+      <div className="space-y-1">
+        <div className="flex h-3 rounded-full overflow-hidden gap-px bg-gray-100">
+          {fitPct > 0 && (
+            <div
+              className="bg-emerald-500 transition-all"
+              style={{ width: `${fitPct}%` }}
+              title={`Fit: ${(breakdown.requirement_fit_score ?? 0).toFixed(2)} × ${((breakdown.requirement_fit_weight ?? 0) * 100).toFixed(0)}%`}
+            />
+          )}
+          {retPct > 0 && (
+            <div
+              className="bg-sky-400 transition-all"
+              style={{ width: `${retPct}%` }}
+              title={`Retrieval: ${(breakdown.vector_score ?? 0).toFixed(2)} × ${(breakdown.vector_weight * 100).toFixed(0)}%`}
+            />
+          )}
+          {rerPct > 0 && (
+            <div
+              className="bg-violet-500 transition-all"
+              style={{ width: `${rerPct}%` }}
+              title={`Rerank: ${(breakdown.rerank_score ?? 0).toFixed(2)} × ${((breakdown.rerank_weight ?? 0) * 100).toFixed(0)}%`}
+            />
+          )}
+        </div>
+        <div className="flex gap-3 text-xs text-gray-500">
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-2 h-2 rounded-sm bg-emerald-500" />
+            Fit {breakdown.requirement_fit_score != null ? breakdown.requirement_fit_score.toFixed(2) : '—'}
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-2 h-2 rounded-sm bg-sky-400" />
+            Retrieval {breakdown.vector_score != null ? breakdown.vector_score.toFixed(2) : '—'}
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-2 h-2 rounded-sm bg-violet-500" />
+            Rerank {breakdown.rerank_score != null ? breakdown.rerank_score.toFixed(2) : '—'}
+          </span>
+        </div>
+      </div>
+    )
+  }
+
   const { rule_score, vector_score, llm_score, rule_weight, vector_weight, llm_weight } = breakdown
 
   const ruleContrib = (rule_score ?? 0) * rule_weight
@@ -125,6 +181,12 @@ function MatchCard({ entry }: { entry: MatchEntry }) {
           </div>
         </div>
 
+        {entry.score_breakdown?.requirement_fit_score != null && (
+          <p className="text-xs text-emerald-600 mt-1">
+            Requirement fit: {(entry.score_breakdown.requirement_fit_score * 100).toFixed(0)}%
+          </p>
+        )}
+
         {/* Score breakdown bar */}
         {entry.score_breakdown && <ScoreBar breakdown={entry.score_breakdown} />}
 
@@ -176,7 +238,7 @@ function FilteredSection({ entries }: { entries: MatchEntry[] }) {
                   Candidate
                 </th>
                 <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-red-600">
-                  Filter Reason
+                  Gaps / Reason
                 </th>
               </tr>
             </thead>
@@ -195,7 +257,17 @@ function FilteredSection({ entries }: { entries: MatchEntry[] }) {
                       {e.candidate_name ?? e.candidate_id}
                     </Link>
                   </td>
-                  <td className="px-4 py-2 text-sm text-red-600">{e.filter_reason ?? '—'}</td>
+                  <td className="px-4 py-2 text-sm text-red-600">
+                    {e.requirement_gaps && e.requirement_gaps.length > 0 ? (
+                      <ul className="list-disc list-inside space-y-0.5">
+                        {e.requirement_gaps.map((g, i) => (
+                          <li key={i}>{g}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      e.filter_reason ?? '—'
+                    )}
+                  </td>
                 </tr>
                 )
               })}

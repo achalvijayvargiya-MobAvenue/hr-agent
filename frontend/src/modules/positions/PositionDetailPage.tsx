@@ -9,6 +9,8 @@ import {
   type PositionUpdateBody,
 } from './hooks/usePositions'
 import HardChecksPanel from './HardChecksPanel'
+import DomainPanel from './DomainPanel'
+import CandidatePoolPanel from './CandidatePoolPanel'
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: 'bg-yellow-100 text-yellow-800',
@@ -316,6 +318,10 @@ export default function PositionDetailPage() {
           />
         </div>
       </div>
+
+      <DomainPanel positionId={id!} position={position} />
+
+      <CandidatePoolPanel positionId={id!} />
 
       <HardChecksPanel
         positionId={id!}

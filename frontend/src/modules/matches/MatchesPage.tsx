@@ -211,6 +211,12 @@ export default function MatchesPage() {
           )}
 
           {matchResult && selectedPositionData && (
+            <p className="text-xs text-gray-500 mb-3">
+              Matching runs on the domain pool only. Build the pool on the position page first.
+            </p>
+          )}
+
+          {matchResult && selectedPositionData && (
             <MatchResultsList
               result={matchResult}
               positionTitle={selectedPositionData.title ?? selectedPosition}

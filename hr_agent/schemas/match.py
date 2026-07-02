@@ -9,10 +9,14 @@ class ScoreBreakdown(BaseModel):
 
     rule_score: float | None
     vector_score: float | None
+    rerank_score: float | None = None
     llm_score: float | None
     final_score: float | None
+    requirement_fit_score: float | None = None
     rule_weight: float
     vector_weight: float
+    rerank_weight: float | None = None
+    requirement_fit_weight: float | None = None
     llm_weight: float
     summary: str
 
@@ -25,8 +29,11 @@ class MatchEntry(BaseModel):
     candidate_name: str | None
     is_filtered: bool
     filter_reason: str | None
+    requirement_fit_score: float | None = None
+    requirement_gaps: list[str] | None = None
     rule_score: float | None
     vector_score: float | None
+    rerank_score: float | None = None
     llm_score: float | None
     final_score: float | None
     explanation: str | None

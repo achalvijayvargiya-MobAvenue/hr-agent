@@ -1,0 +1,135 @@
+{
+  "version": "2026.07",
+  "description": "Mobavenue AI — domain taxonomy for programmatic media and adjacent functions",
+  "domains": [
+    {
+      "code": "TECH",
+      "label": "Technology",
+      "description": "Software engineering, data, infrastructure, QA, and ad-tech engineering",
+      "subdomains": [
+        {"code": "TECH.ADTECH", "label": "Ad Tech Engineering", "adjacent": ["TECH.SWE.BACKEND", "TECH.DATA.ANALYTICS"]},
+        {"code": "TECH.SWE.BACKEND", "label": "Backend Engineering", "adjacent": ["TECH.SWE.FULLSTACK", "TECH.ADTECH", "TECH.INFRA.DEVOPS"]},
+        {"code": "TECH.SWE.FRONTEND", "label": "Frontend Engineering", "adjacent": ["TECH.SWE.FULLSTACK", "TECH.UIUX.PRODUCT"]},
+        {"code": "TECH.SWE.FULLSTACK", "label": "Full-Stack Engineering", "adjacent": ["TECH.SWE.BACKEND", "TECH.SWE.FRONTEND"]},
+        {"code": "TECH.SWE.MOBILE", "label": "Mobile Engineering", "adjacent": ["TECH.SWE.FRONTEND", "TECH.SWE.FULLSTACK"]},
+        {"code": "TECH.DATA.SCIENCE", "label": "Data Science & ML", "adjacent": ["TECH.DATA.ENGINEERING", "TECH.DATA.ANALYTICS"]},
+        {"code": "TECH.DATA.ENGINEERING", "label": "Data Engineering", "adjacent": ["TECH.DATA.SCIENCE", "TECH.DATA.ANALYTICS", "TECH.INFRA.CLOUD"]},
+        {"code": "TECH.DATA.ANALYTICS", "label": "Data Analytics & BI", "adjacent": ["TECH.DATA.SCIENCE", "TECH.DATA.ENGINEERING", "MEDIA.PROGRAMMATIC"]},
+        {"code": "TECH.INFRA.DEVOPS", "label": "DevOps & Platform", "adjacent": ["TECH.INFRA.CLOUD", "TECH.INFRA.SECURITY", "TECH.SWE.BACKEND"]},
+        {"code": "TECH.INFRA.CLOUD", "label": "Cloud & SRE", "adjacent": ["TECH.INFRA.DEVOPS", "TECH.INFRA.SECURITY"]},
+        {"code": "TECH.INFRA.SECURITY", "label": "Security Engineering", "adjacent": ["TECH.INFRA.DEVOPS", "TECH.INFRA.CLOUD"]},
+        {"code": "TECH.QA", "label": "QA & Test Engineering", "adjacent": ["TECH.SWE.BACKEND", "TECH.SWE.FRONTEND"]},
+        {"code": "TECH.PRODUCT", "label": "Technical Product Management", "adjacent": ["TECH.ADTECH", "MEDIA.PROGRAMMATIC", "TECH.UIUX.PRODUCT"]}
+      ]
+    },
+    {
+      "code": "MEDIA",
+      "label": "Programmatic Media & Advertising",
+      "description": "DSP, SSP, programmatic buying, campaign ops, media planning in ad-tech",
+      "subdomains": [
+        {"code": "MEDIA.PROGRAMMATIC", "label": "Programmatic Media", "adjacent": ["MEDIA.DSP", "MEDIA.SSP", "TECH.ADTECH"]},
+        {"code": "MEDIA.DSP", "label": "Demand-Side Platform (DSP)", "adjacent": ["MEDIA.PROGRAMMATIC", "MEDIA.TRADING"]},
+        {"code": "MEDIA.SSP", "label": "Supply-Side Platform (SSP)", "adjacent": ["MEDIA.PROGRAMMATIC", "MEDIA.PUBLISHER"]},
+        {"code": "MEDIA.TRADING", "label": "Media Trading & RTB", "adjacent": ["MEDIA.DSP", "MEDIA.PROGRAMMATIC"]},
+        {"code": "MEDIA.PLANNING", "label": "Media Planning & Strategy", "adjacent": ["MEDIA.PROGRAMMATIC", "MARKETING.PERFORMANCE"]},
+        {"code": "MEDIA.OPS", "label": "Campaign Operations", "adjacent": ["MEDIA.PROGRAMMATIC", "MEDIA.PLANNING"]},
+        {"code": "MEDIA.PUBLISHER", "label": "Publisher & Monetization", "adjacent": ["MEDIA.SSP", "MEDIA.PROGRAMMATIC"]},
+        {"code": "MEDIA.ANALYTICS", "label": "Media Analytics & Attribution", "adjacent": ["MEDIA.PROGRAMMATIC", "TECH.DATA.ANALYTICS"]}
+      ]
+    },
+    {
+      "code": "MARKETING",
+      "label": "Marketing",
+      "description": "Brand, digital, content, growth, and product marketing",
+      "subdomains": [
+        {"code": "MARKETING.DIGITAL", "label": "Digital Marketing", "adjacent": ["MARKETING.PERFORMANCE", "MARKETING.CONTENT"]},
+        {"code": "MARKETING.PERFORMANCE", "label": "Performance & Growth Marketing", "adjacent": ["MARKETING.DIGITAL", "MEDIA.PROGRAMMATIC"]},
+        {"code": "MARKETING.CONTENT", "label": "Content Marketing", "adjacent": ["MARKETING.DIGITAL", "MARKETING.BRAND"]},
+        {"code": "MARKETING.BRAND", "label": "Brand & Communications", "adjacent": ["MARKETING.CONTENT", "MARKETING.DIGITAL"]},
+        {"code": "MARKETING.PRODUCT", "label": "Product Marketing", "adjacent": ["MARKETING.DIGITAL", "TECH.PRODUCT"]},
+        {"code": "MARKETING.SEO", "label": "SEO & Organic Growth", "adjacent": ["MARKETING.DIGITAL", "MARKETING.CONTENT"]},
+        {"code": "MARKETING.SOCIAL", "label": "Social Media Marketing", "adjacent": ["MARKETING.DIGITAL", "MARKETING.CONTENT"]}
+      ]
+    },
+    {
+      "code": "SALES",
+      "label": "Sales & Business Development",
+      "description": "Enterprise sales, partnerships, account management",
+      "subdomains": [
+        {"code": "SALES.ENTERPRISE", "label": "Enterprise Sales", "adjacent": ["SALES.ACCOUNT", "SALES.BD"]},
+        {"code": "SALES.ACCOUNT", "label": "Account Management", "adjacent": ["SALES.ENTERPRISE", "SALES.BD"]},
+        {"code": "SALES.BD", "label": "Business Development & Partnerships", "adjacent": ["SALES.ENTERPRISE", "MEDIA.PROGRAMMATIC"]},
+        {"code": "SALES.INSIDE", "label": "Inside Sales & SDR", "adjacent": ["SALES.ENTERPRISE"]},
+        {"code": "SALES.REVENUE", "label": "Revenue Operations", "adjacent": ["SALES.ENTERPRISE", "FINANCE.FPA"]}
+      ]
+    },
+    {
+      "code": "FINANCE",
+      "label": "Finance & Accounting",
+      "description": "FP&A, accounting, audit, tax, treasury",
+      "subdomains": [
+        {"code": "FINANCE.ACCOUNTING", "label": "Accounting & Bookkeeping", "adjacent": ["FINANCE.AUDIT", "FINANCE.FPA"]},
+        {"code": "FINANCE.FPA", "label": "FP&A & Corporate Finance", "adjacent": ["FINANCE.ACCOUNTING", "SALES.REVENUE"]},
+        {"code": "FINANCE.AUDIT", "label": "Audit & Assurance", "adjacent": ["FINANCE.ACCOUNTING", "FINANCE.TAX"]},
+        {"code": "FINANCE.TAX", "label": "Tax & Compliance", "adjacent": ["FINANCE.ACCOUNTING", "LEGAL.COMPLIANCE"]},
+        {"code": "FINANCE.TREASURY", "label": "Treasury & Payments", "adjacent": ["FINANCE.FPA", "FINANCE.ACCOUNTING"]}
+      ]
+    },
+    {
+      "code": "LEGAL",
+      "label": "Legal & Compliance",
+      "description": "Corporate law, contracts, regulatory, IP",
+      "subdomains": [
+        {"code": "LEGAL.CORPORATE", "label": "Corporate & Commercial Law", "adjacent": ["LEGAL.CONTRACTS", "LEGAL.COMPLIANCE"]},
+        {"code": "LEGAL.CONTRACTS", "label": "Contracts & Negotiation", "adjacent": ["LEGAL.CORPORATE", "LEGAL.COMPLIANCE"]},
+        {"code": "LEGAL.COMPLIANCE", "label": "Regulatory Compliance", "adjacent": ["LEGAL.CORPORATE", "FINANCE.TAX"]},
+        {"code": "LEGAL.LITIGATION", "label": "Litigation & Disputes", "adjacent": ["LEGAL.CORPORATE"]},
+        {"code": "LEGAL.IP", "label": "Intellectual Property", "adjacent": ["LEGAL.CORPORATE"]}
+      ]
+    },
+    {
+      "code": "DESIGN",
+      "label": "Design & Creative",
+      "description": "Visual design, graphic design, motion, creative direction",
+      "subdomains": [
+        {"code": "DESIGN.GRAPHIC", "label": "Graphic & Visual Design", "adjacent": ["DESIGN.BRAND", "TECH.UIUX.VISUAL"]},
+        {"code": "DESIGN.BRAND", "label": "Brand & Identity Design", "adjacent": ["DESIGN.GRAPHIC", "MARKETING.BRAND"]},
+        {"code": "DESIGN.MOTION", "label": "Motion & Video Design", "adjacent": ["DESIGN.GRAPHIC", "MARKETING.CONTENT"]},
+        {"code": "DESIGN.CREATIVE", "label": "Creative Direction", "adjacent": ["DESIGN.BRAND", "MARKETING.BRAND"]}
+      ]
+    },
+    {
+      "code": "UIUX",
+      "label": "UI/UX & Product Design",
+      "description": "User experience, interaction design, product design, research",
+      "subdomains": [
+        {"code": "UIUX.PRODUCT", "label": "Product Design", "adjacent": ["UIUX.UX", "UIUX.UI", "TECH.UIUX.PRODUCT"]},
+        {"code": "UIUX.UX", "label": "UX Design & Research", "adjacent": ["UIUX.PRODUCT", "UIUX.UI"]},
+        {"code": "UIUX.UI", "label": "UI & Interaction Design", "adjacent": ["UIUX.PRODUCT", "UIUX.UX", "TECH.SWE.FRONTEND"]},
+        {"code": "TECH.UIUX.PRODUCT", "label": "Design Systems", "adjacent": ["UIUX.UI", "UIUX.PRODUCT", "TECH.SWE.FRONTEND"]},
+        {"code": "TECH.UIUX.VISUAL", "label": "Visual / UI Production", "adjacent": ["UIUX.UI", "DESIGN.GRAPHIC"]}
+      ]
+    },
+    {
+      "code": "HR",
+      "label": "Human Resources",
+      "description": "Talent acquisition, HR operations, L&D, compensation",
+      "subdomains": [
+        {"code": "HR.TA", "label": "Talent Acquisition & Recruiting", "adjacent": ["HR.OPS"]},
+        {"code": "HR.OPS", "label": "HR Operations & Business Partnering", "adjacent": ["HR.TA", "HR.LND"]},
+        {"code": "HR.LND", "label": "Learning & Development", "adjacent": ["HR.OPS"]},
+        {"code": "HR.COMP", "label": "Compensation & Benefits", "adjacent": ["HR.OPS", "FINANCE.FPA"]}
+      ]
+    },
+    {
+      "code": "OPS",
+      "label": "Operations & Administration",
+      "description": "General operations, office admin, executive support",
+      "subdomains": [
+        {"code": "OPS.GENERAL", "label": "General Operations", "adjacent": ["OPS.ADMIN"]},
+        {"code": "OPS.ADMIN", "label": "Office & Administration", "adjacent": ["OPS.GENERAL", "HR.OPS"]},
+        {"code": "OPS.EXEC", "label": "Executive / Chief of Staff", "adjacent": ["OPS.GENERAL"]}
+      ]
+    }
+  ]
+}

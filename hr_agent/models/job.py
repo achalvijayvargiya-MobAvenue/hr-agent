@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, Text, func
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from hr_agent.database import Base
@@ -31,6 +31,15 @@ class Job(Base):
     responsibilities: Mapped[list | None] = mapped_column(JSON, nullable=True)
     tools_and_technologies: Mapped[list | None] = mapped_column(JSON, nullable=True)
     seniority_level: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Domain taxonomy (Phase 1)
+    domain_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    domain_label: Mapped[str | None] = mapped_column(String, nullable=True)
+    subdomain_codes: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    subdomain_labels: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    domain_confidence: Mapped[float | None] = mapped_column(nullable=True)
+    domain_source: Mapped[str | None] = mapped_column(String, nullable=True)  # auto | manual
+    domain_evidence: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
     # User-configured hard checks: {field: [required values] | "required value"}
     hard_checks: Mapped[dict | None] = mapped_column(JSON, nullable=True)

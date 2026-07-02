@@ -16,6 +16,7 @@ from hr_agent.api.deps import (
     extract_pdf_text,
     get_current_user,
     get_db,
+    get_domain_classification_service,
     get_embedding_service,
     get_extraction_service,
 )
@@ -32,6 +33,7 @@ from hr_agent.schemas.candidate import (
     CandidateUploadResponse,
     ResolveImportRequest,
 )
+from hr_agent.schemas.domain import DomainUpdate
 from hr_agent.services.candidate_service import (
     create_candidate_from_extraction,
     create_import,
@@ -40,9 +42,16 @@ from hr_agent.services.candidate_service import (
     normalize_email,
     resolve_import_conflict,
 )
+from hr_agent.services.domain_classification_service import (
+    DomainClassificationError,
+    DomainClassificationService,
+    apply_domain_to_candidate,
+    apply_manual_domain,
+)
+from hr_agent.services.domain_helpers import candidate_domain_dict
 from hr_agent.services.embedding_service import EmbeddingService
 from hr_agent.services.extraction_service import ExtractionError, ExtractionService
-from hr_agent.services.pdf_service import PDFExtractionError
+from hr_agent.services.profile_fingerprint_service import build_candidate_fingerprint
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/candidates", tags=["candidates"], dependencies=[Depends(get_current_user)])
@@ -67,6 +76,7 @@ def _candidate_response(candidate: Candidate, status: str) -> CandidateResponse:
         responsibilities=candidate.responsibilities or [],
         seniority_level=candidate.seniority_level,
         summary=candidate.summary,
+        **candidate_domain_dict(candidate),
         source_name=candidate.source_name or "local_kb",
         status=status,
         created_at=candidate.created_at,
@@ -165,6 +175,28 @@ def _process_import(
             extracted.normalized_role, extracted.years_experience,
         )
 
+        logger.info("[BG:CV] Step 1b — Domain classification for candidate %s", email)
+        try:
+            domain_svc = get_domain_classification_service()
+            classification = domain_svc.classify_candidate(
+                current_title=extracted.current_title,
+                normalized_role=extracted.normalized_role,
+                seniority_level=extracted.seniority_level,
+                industries=extracted.industries,
+                skills=extracted.skills,
+                tools=extracted.tools_and_technologies,
+                responsibilities=extracted.responsibilities,
+                experience_areas=extracted.experience_areas,
+                education=[e.model_dump() for e in extracted.education],
+                summary=extracted.summary,
+            )
+            apply_domain_to_candidate(candidate, classification)
+            db.flush()
+        except DomainClassificationError as exc:
+            logger.warning("[BG:CV] Domain classification failed for %s: %s", email, exc)
+        except Exception as exc:
+            logger.warning("[BG:CV] Unexpected domain classification error for %s: %s", email, exc)
+
         logger.info("[BG:CV] Step 2/2 — Generating embedding for candidate %s", email)
         log = (
             db.query(ProcessingLog)
@@ -174,6 +206,9 @@ def _process_import(
         )
         try:
             embedding_svc.generate_and_store(db, "candidate", email, extracted.summary)
+            embedding_svc.ensure_fingerprint_embedding(
+                db, "candidate", email, build_candidate_fingerprint(candidate)
+            )
             if log:
                 log.status = ProcessingStatus.EMBEDDED
             delete_import_row(db, import_row)
@@ -393,6 +428,9 @@ def delete_candidate(candidate_email: str, db: Session = Depends(get_db)) -> Res
         raise NotFoundError(message=f"Candidate {candidate_email!r} not found.")
 
     db.query(MatchResult).filter_by(candidate_id=email).delete()
+    from hr_agent.models.job_candidate_pool import JobCandidatePool
+
+    db.query(JobCandidatePool).filter_by(candidate_id=email).delete()
     db.query(Embedding).filter_by(entity_type="candidate", entity_id=email).delete()
     db.query(ProcessingLog).filter_by(entity_type="candidate", entity_id=email).delete()
     db.delete(candidate)
@@ -400,3 +438,74 @@ def delete_candidate(candidate_email: str, db: Session = Depends(get_db)) -> Res
 
     logger.info("[API:CV] Candidate deleted — email=%s", email)
     return Response(status_code=204)
+
+
+@router.post("/{candidate_email}/classify-domain", response_model=CandidateResponse)
+def classify_candidate_domain(
+    candidate_email: str,
+    db: Session = Depends(get_db),
+    domain_svc: DomainClassificationService = Depends(get_domain_classification_service),
+):
+    """Re-run LLM domain/subdomain classification from current candidate fields."""
+    email = normalize_email(candidate_email) or candidate_email
+    candidate = db.query(Candidate).filter_by(email=email).first()
+    if candidate is None:
+        raise NotFoundError(message=f"Candidate {candidate_email!r} not found.")
+    if not candidate.normalized_role:
+        raise HTTPException(status_code=422, detail="Candidate must be structured before domain classification.")
+
+    try:
+        classification = domain_svc.classify_candidate(
+            current_title=candidate.current_title,
+            normalized_role=candidate.normalized_role,
+            seniority_level=candidate.seniority_level,
+            industries=candidate.industries,
+            skills=candidate.skills,
+            tools=candidate.tools_and_technologies,
+            responsibilities=candidate.responsibilities,
+            experience_areas=candidate.experience_areas,
+            education=candidate.education,
+            summary=candidate.summary,
+        )
+        apply_domain_to_candidate(candidate, classification)
+        db.commit()
+        db.refresh(candidate)
+    except DomainClassificationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    log = (
+        db.query(ProcessingLog)
+        .filter_by(entity_id=email, entity_type="candidate")
+        .order_by(ProcessingLog.updated_at.desc())
+        .first()
+    )
+    status = log.status if log else ProcessingStatus.PENDING
+    return _candidate_response(candidate, status)
+
+
+@router.put("/{candidate_email}/domain", response_model=CandidateResponse)
+def update_candidate_domain(
+    candidate_email: str,
+    body: DomainUpdate,
+    db: Session = Depends(get_db),
+):
+    """Manually set domain and subdomains from the taxonomy."""
+    email = normalize_email(candidate_email) or candidate_email
+    candidate = db.query(Candidate).filter_by(email=email).first()
+    if candidate is None:
+        raise NotFoundError(message=f"Candidate {candidate_email!r} not found.")
+    try:
+        apply_manual_domain(candidate, body.domain_code, body.subdomain_codes)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    db.commit()
+    db.refresh(candidate)
+
+    log = (
+        db.query(ProcessingLog)
+        .filter_by(entity_id=email, entity_type="candidate")
+        .order_by(ProcessingLog.updated_at.desc())
+        .first()
+    )
+    status = log.status if log else ProcessingStatus.PENDING
+    return _candidate_response(candidate, status)

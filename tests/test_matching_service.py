@@ -129,6 +129,7 @@ def _make_candidate(**kwargs) -> SimpleNamespace:
         seniority_level=None,
         location=None,
         industries=["Financial Services"],
+        education=[],
     )
     defaults.update(kwargs)
     return SimpleNamespace(**defaults)

@@ -20,7 +20,7 @@ _s = get_settings()
 setup_logging(log_level=_s.log_level, log_file=_s.log_file, backup_count=_s.log_backup_days)
 
 import hr_agent.models  # noqa: F401, E402 — registers all ORM models with Base.metadata
-from hr_agent.api import admin, auth, candidates, jobs, matches, sources, users  # noqa: E402
+from hr_agent.api import admin, auth, candidates, jobs, matches, sources, taxonomy, users  # noqa: E402
 from hr_agent.core.errors import HRAgentError  # noqa: E402
 from hr_agent.database import init_db  # noqa: E402
 
@@ -136,6 +136,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(jobs.router, prefix="/api/v1")
     app.include_router(candidates.router, prefix="/api/v1")
+    app.include_router(taxonomy.router, prefix="/api/v1")
     app.include_router(matches.router, prefix="/api/v1")
     app.include_router(admin.router, prefix="/api/v1")
     app.include_router(users.router, prefix="/api/v1")

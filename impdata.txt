@@ -1,0 +1,25 @@
+Internal Database URL
+postgresql://hr_platform_q1os_user:KjHhGo3x0cQHfRKoFynP0l97Ekmpq62o@dpg-d8udrdtckfvc73f2ovs0-a/hr_platform_q1os
+postgresql://hr_platform_q1os_user:KjHhGo3x0cQHfRKoFynP0l97Ekmpq62o@dpg-d8udrdtckfvc73f2ovs0-a/hr_platform_q1os
+External Database URL
+Connect from services outside of Render.
+postgresql://hr_platform_q1os_user:KjHhGo3x0cQHfRKoFynP0l97Ekmpq62o@dpg-d8udrdtckfvc73f2ovs0-a.singapore-postgres.render.com/hr_platform_q1os
+postgresql://hr_platform_q1os_user:KjHhGo3x0cQHfRKoFynP0l97Ekmpq62o@dpg-d8udrdtckfvc73f2ovs0-a.singapore-postgres.render.com/hr_platform_q1os
+PSQL Command
+Connect using the
+Render CLI
+render psql dpg-d8udrdtckfvc73f2ovs0-a
+
+
+username: hr_platform_q1os_user
+password: KjHhGo3x0cQHfRKoFynP0l97Ekmpq62o
+
+
+hr-agent-api
+
+https://hr-agent-api-n00g.onrender.com/api/v1
+
+https://hr-agent-72pq.onrender.com/login
+
+$env:DATABASE_URL = "postgresql://user:pass@....singapore-postgres.render.com/hr_platform_q1os"
+alembic stamp head

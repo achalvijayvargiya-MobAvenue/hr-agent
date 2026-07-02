@@ -5,6 +5,7 @@ POST /jobs/upload   — accept a JD PDF, extract text, trigger background proces
 GET  /jobs/{job_id} — return the structured job record with current processing status
 """
 import logging
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, UploadFile
 from sqlalchemy.orm import Session
@@ -13,15 +14,20 @@ from hr_agent.api.deps import (
     extract_pdf_text,
     get_current_user,
     get_db,
+    get_domain_classification_service,
     get_embedding_service,
     get_extraction_service,
+    get_pool_service,
 )
 from hr_agent.core.errors import ConflictError, NotFoundError
 from hr_agent.models.embedding import Embedding
 from hr_agent.models.job import Job
 from hr_agent.models.match_result import MatchResult
+from hr_agent.models.job_candidate_pool import JobCandidatePool
 from hr_agent.models.processing_log import ProcessingLog, ProcessingStatus
 from hr_agent.models.user import User
+from hr_agent.models.candidate import Candidate
+from hr_agent.schemas.domain import DomainUpdate, PoolBuildResponse, PoolEntryResponse, PoolMemberUpdate
 from hr_agent.schemas.job import (
     HardChecksUpdate,
     JobResponse,
@@ -30,8 +36,17 @@ from hr_agent.schemas.job import (
     PositionManualCreate,
     PositionUpdate,
 )
+from hr_agent.services.domain_classification_service import (
+    DomainClassificationError,
+    DomainClassificationService,
+    apply_domain_to_job,
+    apply_manual_domain,
+)
+from hr_agent.services.domain_helpers import job_domain_dict
 from hr_agent.services.embedding_service import EmbeddingService
 from hr_agent.services.extraction_service import ExtractionError, ExtractionService
+from hr_agent.services.pool_service import PoolService
+from hr_agent.services.profile_fingerprint_service import build_job_fingerprint
 from hr_agent.services.pdf_service import PDFExtractionError
 
 logger = logging.getLogger(__name__)
@@ -67,12 +82,48 @@ def _job_to_response(job: Job, db: Session) -> JobResponse:
         department=job.department,
         industry=job.industry,
         summary=job.summary,
+        **job_domain_dict(job),
         hard_checks=job.hard_checks,
         candidates_required=job.candidates_required,
         position_status=job.position_status,
         created_by=job.created_by,
         status=_job_proc_status(db, job.id),
         created_at=job.created_at,
+    )
+
+
+def _pool_entry_response(row: JobCandidatePool, candidate: Candidate | None) -> PoolEntryResponse:
+    return PoolEntryResponse(
+        candidate_id=row.candidate_id,
+        candidate_name=candidate.name if candidate else None,
+        current_title=candidate.current_title if candidate else None,
+        domain_code=candidate.domain_code if candidate else None,
+        subdomain_codes=candidate.subdomain_codes or [] if candidate else [],
+        pool_status=row.pool_status,  # type: ignore[arg-type]
+        domain_match_score=row.domain_match_score,
+        subdomain_match_score=row.subdomain_match_score,
+        relevance_score=row.relevance_score,
+        match_reason=row.match_reason,
+        computed_at=row.computed_at,
+    )
+
+
+def _pool_build_response(job_id: str, rows: list[JobCandidatePool], db: Session) -> PoolBuildResponse:
+    cand_ids = [r.candidate_id for r in rows]
+    candidates = db.query(Candidate).filter(Candidate.email.in_(cand_ids)).all() if cand_ids else []
+    cand_map = {c.email: c for c in candidates}
+    entries = [_pool_entry_response(r, cand_map.get(r.candidate_id)) for r in rows]
+    computed_at = max((r.computed_at for r in rows), default=datetime.now(timezone.utc))
+    in_pool = sum(1 for r in rows if r.pool_status in ("in_pool", "manual_add"))
+    return PoolBuildResponse(
+        job_id=job_id,
+        total_candidates=len(rows),
+        in_pool=in_pool,
+        out_of_pool=sum(1 for r in rows if r.pool_status == "out_of_pool"),
+        manual_add=sum(1 for r in rows if r.pool_status == "manual_add"),
+        manual_exclude=sum(1 for r in rows if r.pool_status == "manual_exclude"),
+        computed_at=computed_at,
+        entries=sorted(entries, key=lambda e: e.relevance_score, reverse=True),
     )
 
 
@@ -177,6 +228,30 @@ def _process_job(
         job.industry = extracted.industry
         job.summary = extracted.summary
 
+        # ── Step 1b: Domain classification ───────────────────────────────────
+        logger.info("[BG:JOB] Step 1b — Domain classification for job %s", job_id)
+        try:
+            from hr_agent.api.deps import get_domain_classification_service
+
+            domain_svc = get_domain_classification_service()
+            classification = domain_svc.classify_job(
+                title=extracted.title,
+                normalized_role=extracted.normalized_role,
+                seniority_level=extracted.seniority_level,
+                department=extracted.department,
+                industry=extracted.industry,
+                skills=extracted.must_have_skills + extracted.good_to_have_skills,
+                tools=extracted.tools_and_technologies,
+                responsibilities=extracted.responsibilities,
+                education=extracted.education_requirements,
+                summary=extracted.summary,
+            )
+            apply_domain_to_job(job, classification)
+        except DomainClassificationError as exc:
+            logger.warning("[BG:JOB] Domain classification failed for job %s: %s", job_id, exc)
+        except Exception as exc:
+            logger.warning("[BG:JOB] Unexpected domain classification error for job %s: %s", job_id, exc)
+
         job.position_status = "DRAFT"
         if log:
             log.status = ProcessingStatus.STRUCTURED
@@ -194,6 +269,9 @@ def _process_job(
         logger.info("[BG:JOB] Step 2/2 — Generating embedding for job %s", job_id)
         try:
             embedding_svc.generate_and_store(db, "job", job_id, extracted.summary)
+            embedding_svc.ensure_fingerprint_embedding(
+                db, "job", job_id, build_job_fingerprint(job)
+            )
             if log:
                 log.status = ProcessingStatus.EMBEDDED
             db.commit()
@@ -317,31 +395,7 @@ def create_manual_position(
         job.id, job.title, current_user.id,
     )
 
-    return JobResponse(
-        id=job.id,
-        title=job.title,
-        normalized_role=job.normalized_role,
-        experience_min=job.experience_min,
-        experience_max=job.experience_max,
-        employment_type=job.employment_type,
-        location=job.location,
-        must_have_skills=job.must_have_skills or [],
-        good_to_have_skills=job.good_to_have_skills or [],
-        education_requirements=job.education_requirements or [],
-        certifications=job.certifications or [],
-        responsibilities=job.responsibilities or [],
-        tools_and_technologies=job.tools_and_technologies or [],
-        seniority_level=job.seniority_level,
-        department=job.department,
-        industry=job.industry,
-        summary=job.summary,
-        hard_checks=job.hard_checks,
-        candidates_required=job.candidates_required,
-        position_status=job.position_status,
-        created_by=job.created_by,
-        status=ProcessingStatus.STRUCTURED,
-        created_at=job.created_at,
-    )
+    return _job_to_response(job, db)
 
 
 @router.get("", response_model=list[JobResponse])
@@ -357,42 +411,7 @@ def list_jobs(
     if created_by is not None:
         query = query.filter(Job.created_by == created_by)
     jobs = query.order_by(Job.created_at.desc()).all()
-
-    results = []
-    for job in jobs:
-        log = (
-            db.query(ProcessingLog)
-            .filter_by(entity_id=job.id, entity_type="job")
-            .order_by(ProcessingLog.updated_at.desc())
-            .first()
-        )
-        proc_status = log.status if log else ProcessingStatus.PENDING
-        results.append(JobResponse(
-            id=job.id,
-            title=job.title,
-            normalized_role=job.normalized_role,
-            experience_min=job.experience_min,
-            experience_max=job.experience_max,
-            employment_type=job.employment_type,
-            location=job.location,
-            must_have_skills=job.must_have_skills or [],
-            good_to_have_skills=job.good_to_have_skills or [],
-            education_requirements=job.education_requirements or [],
-            certifications=job.certifications or [],
-            responsibilities=job.responsibilities or [],
-            tools_and_technologies=job.tools_and_technologies or [],
-            seniority_level=job.seniority_level,
-            department=job.department,
-            industry=job.industry,
-            summary=job.summary,
-            hard_checks=job.hard_checks,
-            candidates_required=job.candidates_required,
-            position_status=job.position_status,
-            created_by=job.created_by,
-            status=proc_status,
-            created_at=job.created_at,
-        ))
-    return results
+    return [_job_to_response(job, db) for job in jobs]
 
 
 @router.get("/{job_id}", response_model=JobResponse)
@@ -437,6 +456,7 @@ def delete_position(job_id: str, db: Session = Depends(get_db)) -> Response:
         raise NotFoundError(message=f"Job {job_id!r} not found.")
 
     db.query(MatchResult).filter_by(job_id=job_id).delete()
+    db.query(JobCandidatePool).filter_by(job_id=job_id).delete()
     db.query(Embedding).filter_by(entity_type="job", entity_id=job_id).delete()
     db.query(ProcessingLog).filter_by(entity_type="job", entity_id=job_id).delete()
     db.delete(job)
@@ -473,31 +493,7 @@ def update_hard_checks(job_id: str, body: HardChecksUpdate, db: Session = Depend
     )
     status = log.status if log else ProcessingStatus.PENDING
 
-    return JobResponse(
-        id=job.id,
-        title=job.title,
-        normalized_role=job.normalized_role,
-        experience_min=job.experience_min,
-        experience_max=job.experience_max,
-        employment_type=job.employment_type,
-        location=job.location,
-        must_have_skills=job.must_have_skills or [],
-        good_to_have_skills=job.good_to_have_skills or [],
-        education_requirements=job.education_requirements or [],
-        certifications=job.certifications or [],
-        responsibilities=job.responsibilities or [],
-        tools_and_technologies=job.tools_and_technologies or [],
-        seniority_level=job.seniority_level,
-        department=job.department,
-        industry=job.industry,
-        summary=job.summary,
-        hard_checks=job.hard_checks,
-        candidates_required=job.candidates_required,
-        position_status=job.position_status,
-        created_by=job.created_by,
-        status=status,
-        created_at=job.created_at,
-    )
+    return _job_to_response(job, db)
 
 
 @router.post("/{job_id}/approve", response_model=JobResponse)
@@ -579,28 +575,105 @@ def approve_position(
         job_id, current_user.id,
     )
 
-    return JobResponse(
-        id=job.id,
-        title=job.title,
-        normalized_role=job.normalized_role,
-        experience_min=job.experience_min,
-        experience_max=job.experience_max,
-        employment_type=job.employment_type,
-        location=job.location,
-        must_have_skills=job.must_have_skills or [],
-        good_to_have_skills=job.good_to_have_skills or [],
-        education_requirements=job.education_requirements or [],
-        certifications=job.certifications or [],
-        responsibilities=job.responsibilities or [],
-        tools_and_technologies=job.tools_and_technologies or [],
-        seniority_level=job.seniority_level,
-        department=job.department,
-        industry=job.industry,
-        summary=job.summary,
-        hard_checks=job.hard_checks,
-        candidates_required=job.candidates_required,
-        position_status=job.position_status,
-        created_by=job.created_by,
-        status=proc_status,
-        created_at=job.created_at,
-    )
+    return _job_to_response(job, db)
+
+
+# ── Domain & pool (Phase 1–2) ─────────────────────────────────────────────────
+
+
+@router.post("/{job_id}/classify-domain", response_model=JobResponse)
+def classify_job_domain(
+    job_id: str,
+    db: Session = Depends(get_db),
+    domain_svc: DomainClassificationService = Depends(get_domain_classification_service),
+) -> JobResponse:
+    """Re-run LLM domain/subdomain classification from current job fields."""
+    job = db.query(Job).filter_by(id=job_id).first()
+    if job is None:
+        raise NotFoundError(message=f"Job {job_id!r} not found.")
+    if not job.normalized_role:
+        raise HTTPException(status_code=422, detail="Job must be structured before domain classification.")
+
+    try:
+        classification = domain_svc.classify_job(
+            title=job.title,
+            normalized_role=job.normalized_role,
+            seniority_level=job.seniority_level,
+            department=job.department,
+            industry=job.industry,
+            skills=(job.must_have_skills or []) + (job.good_to_have_skills or []),
+            tools=job.tools_and_technologies,
+            responsibilities=job.responsibilities,
+            education=job.education_requirements,
+            summary=job.summary,
+        )
+        apply_domain_to_job(job, classification)
+        db.commit()
+        db.refresh(job)
+    except DomainClassificationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return _job_to_response(job, db)
+
+
+@router.put("/{job_id}/domain", response_model=JobResponse)
+def update_job_domain(job_id: str, body: DomainUpdate, db: Session = Depends(get_db)) -> JobResponse:
+    """Manually set domain and subdomains from the taxonomy."""
+    job = db.query(Job).filter_by(id=job_id).first()
+    if job is None:
+        raise NotFoundError(message=f"Job {job_id!r} not found.")
+    try:
+        apply_manual_domain(job, body.domain_code, body.subdomain_codes)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    db.commit()
+    db.refresh(job)
+    return _job_to_response(job, db)
+
+
+@router.get("/{job_id}/pool", response_model=PoolBuildResponse)
+def get_job_pool(
+    job_id: str,
+    db: Session = Depends(get_db),
+    pool_svc: PoolService = Depends(get_pool_service),
+) -> PoolBuildResponse:
+    """Return the current candidate pool for a job (build first if empty)."""
+    job = db.query(Job).filter_by(id=job_id).first()
+    if job is None:
+        raise NotFoundError(message=f"Job {job_id!r} not found.")
+
+    rows = pool_svc.get_pool(db, job_id)
+    if not rows and job.domain_code:
+        rows = pool_svc.build_pool(db, job_id)
+    return _pool_build_response(job_id, rows, db)
+
+
+@router.post("/{job_id}/pool/build", response_model=PoolBuildResponse)
+def build_job_pool(
+    job_id: str,
+    db: Session = Depends(get_db),
+    pool_svc: PoolService = Depends(get_pool_service),
+) -> PoolBuildResponse:
+    """Rebuild the candidate pool from domain/subdomain taxonomy rules."""
+    try:
+        rows = pool_svc.build_pool(db, job_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _pool_build_response(job_id, rows, db)
+
+
+@router.put("/{job_id}/pool/{candidate_id}", response_model=PoolEntryResponse)
+def update_pool_member(
+    job_id: str,
+    candidate_id: str,
+    body: PoolMemberUpdate,
+    db: Session = Depends(get_db),
+    pool_svc: PoolService = Depends(get_pool_service),
+) -> PoolEntryResponse:
+    """Manually add, exclude, or reset a candidate in the job pool."""
+    try:
+        row = pool_svc.set_member_status(db, job_id, candidate_id, body.pool_status)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    candidate = db.query(Candidate).filter_by(email=candidate_id).first()
+    return _pool_entry_response(row, candidate)

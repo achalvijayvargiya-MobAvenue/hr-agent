@@ -55,6 +55,13 @@ class JobResponse(BaseModel):
     tools_and_technologies: list[str]
     seniority_level: str | None
     summary: str | None
+    domain_code: str | None = None
+    domain_label: str | None = None
+    subdomain_codes: list[str] = Field(default_factory=list)
+    subdomain_labels: list[str] = Field(default_factory=list)
+    domain_confidence: float | None = None
+    domain_source: str | None = None
+    domain_evidence: list[str] = Field(default_factory=list)
     hard_checks: dict[str, Any] | None = None
     candidates_required: int | None = None
     position_status: str = "DRAFT"
