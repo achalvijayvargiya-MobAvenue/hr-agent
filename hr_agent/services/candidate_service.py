@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from hr_agent.models.candidate import Candidate
 from hr_agent.models.candidate_import import CandidateImport, ImportStatus
+from hr_agent.models.match_result import MatchResult
 from hr_agent.models.processing_log import ProcessingLog, ProcessingStatus
 from hr_agent.schemas.candidate import CVExtracted
 
@@ -109,6 +110,10 @@ def resolve_import_conflict(
     if candidate is None:
         raise ValueError(f"Candidate {import_row.proposed_email!r} not found.")
 
+    # Delete existing match results so this candidate is re-scored next time.
+    # This prevents stale matching data from persisting after an existing record is updated.
+    db.query(MatchResult).filter_by(candidate_id=candidate.email).delete(synchronize_session=False)
+
     candidate.raw_text = import_row.raw_text
     candidate.source_name = import_row.source_name
     apply_extraction_to_candidate(candidate, extracted)
@@ -134,7 +139,7 @@ def resolve_import_conflict(
     import_id = import_row.id
     delete_import_row(db, import_row)
     db.commit()
-    logger.info("[IMPORT] User updated existing candidate — email=%s import_id=%s", candidate.email, import_id)
+    logger.info("[IMPORT] User updated existing candidate — email=%s import_id=%s (deleted old MatchResults)", candidate.email, import_id)
     return candidate
 
 

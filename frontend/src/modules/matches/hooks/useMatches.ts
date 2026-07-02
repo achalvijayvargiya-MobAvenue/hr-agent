@@ -50,6 +50,7 @@ export function useMatches(
   topK?: number,
   sourceFilter?: string[],
   enabled = false,
+  isPolling = false,
 ) {
   const params: Record<string, string> = {}
   if (topK) params.top_k = String(topK)
@@ -63,6 +64,7 @@ export function useMatches(
     },
     enabled: !!positionId && enabled,
     staleTime: 0,
+    refetchInterval: isPolling ? 3000 : false,
   })
 }
 

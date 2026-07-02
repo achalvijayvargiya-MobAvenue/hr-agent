@@ -124,16 +124,15 @@ def get_matches(
     if existing:
         return _build_match_response(job_id, existing, db)
 
-    # No cached results — run now
-    try:
-        results = matching_svc.run(db, job_id, source_filter=source_list, top_k=top_k)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except Exception as exc:
-        logger.exception("Matching pipeline failed for job %s", job_id)
-        raise HTTPException(status_code=500, detail=f"Matching pipeline error: {exc}") from exc
+    # No cached results — return an empty response so the UI knows it's either deleted or currently computing
+    return MatchResponse(
+        job_id=job_id,
+        total_candidates=0,
+        passed_filter=0,
+        matches=[],
+        computed_at=None,
+    )
 
-    return _build_match_response(job_id, results, db)
 
 
 @router.post("/recompute-match", response_model=RecomputeResponse, status_code=202)

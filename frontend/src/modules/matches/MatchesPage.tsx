@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { usePositions } from '../positions/hooks/usePositions'
 import { useSources } from '../candidates/hooks/useSources'
 import { useMatches, useRecompute } from './hooks/useMatches'
@@ -12,15 +13,25 @@ export default function MatchesPage() {
   const [topK, setTopK] = useState(10)
   const [selectedSources, setSelectedSources] = useState<string[]>([])
   const [runEnabled, setRunEnabled] = useState(false)
+  const [isPolling, setIsPolling] = useState(false)
 
   const recompute = useRecompute()
+  const queryClient = useQueryClient()
 
   const { data: matchResult, isFetching, isError, refetch } = useMatches(
     selectedPosition,
     topK,
     selectedSources.length > 0 ? selectedSources : undefined,
     runEnabled,
+    isPolling,
   )
+
+  useEffect(() => {
+    // Stop polling once the background task computes the new results
+    if (isPolling && matchResult?.computed_at) {
+      setIsPolling(false)
+    }
+  }, [isPolling, matchResult])
 
   const selectedPositionData = positions.find((p) => p.id === selectedPosition)
 
@@ -32,28 +43,28 @@ export default function MatchesPage() {
 
   function handleRunMatching() {
     if (!selectedPosition) return
-    // Force a fresh recompute, then load results
-    recompute.mutate(
-      {
-        job_id: selectedPosition,
-        source_filter: selectedSources.length > 0 ? selectedSources : null,
-        top_k: topK,
-      },
-      {
-        onSuccess: () => {
-          // Give background task a moment, then fetch
-          setTimeout(() => {
-            setRunEnabled(true)
-            refetch()
-          }, 1500)
-        },
-      },
+
+    // Clear previous results from cache to show loading state
+    queryClient.setQueryData(
+      ['matches', selectedPosition, topK, selectedSources.length > 0 ? selectedSources : undefined],
+      undefined
     )
-    // Also immediately try to load any cached results
+
     setRunEnabled(true)
+    setIsPolling(true)
+
+    // Safety timeout to stop polling after 60s in case of silent failure
+    setTimeout(() => setIsPolling(false), 60000)
+
+    // Force a fresh recompute
+    recompute.mutate({
+      job_id: selectedPosition,
+      source_filter: selectedSources.length > 0 ? selectedSources : null,
+      top_k: topK,
+    })
   }
 
-  const isRunning = recompute.isPending || isFetching
+  const isRunning = recompute.isPending || isFetching || isPolling
 
   return (
     <div>
