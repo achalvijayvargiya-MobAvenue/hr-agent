@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePositions, useUploadPosition } from './hooks/usePositions'
 import ManualPositionForm from './ManualPositionForm'
@@ -21,7 +21,8 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function PositionsPage() {
   const navigate = useNavigate()
-  const { data: positions = [], isLoading, isError } = usePositions()
+  const [enablePolling, setEnablePolling] = useState(false)
+  const { data: positions = [], isLoading, isError, refetch } = usePositions(undefined, enablePolling)
   const upload = useUploadPosition()
 
   const [uploadOpen, setUploadOpen] = useState(false)
@@ -30,6 +31,18 @@ export default function PositionsPage() {
   const [uploadError, setUploadError] = useState('')
   const [uploadSuccess, setUploadSuccess] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Check if any positions are still being processed (EXTRACTED/PENDING = title not available yet)
+  const hasProcessingPositions = positions.some(
+    (p) => p.status === 'EXTRACTED' || p.status === 'PENDING'
+  )
+
+  // Stop polling once all positions are done processing
+  useEffect(() => {
+    if (enablePolling && !hasProcessingPositions) {
+      setEnablePolling(false)
+    }
+  }, [enablePolling, hasProcessingPositions])
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
@@ -48,6 +61,15 @@ export default function PositionsPage() {
         setUploadSuccess(data.message)
         setSelectedFile(null)
         if (fileRef.current) fileRef.current.value = ''
+        
+        // Refetch immediately to get the new job
+        refetch()
+        
+        // Start polling after a brief delay to catch backend processing
+        setTimeout(() => {
+          setEnablePolling(true)
+        }, 500)
+        
         setTimeout(() => {
           setUploadOpen(false)
           setUploadSuccess('')
@@ -113,7 +135,11 @@ export default function PositionsPage() {
                   className="cursor-pointer hover:bg-indigo-50 transition-colors"
                 >
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                    {p.title ?? <span className="italic text-gray-400">Processing…</span>}
+                    {p.status === 'EXTRACTED' || p.status === 'PENDING' ? (
+                      <span className="italic text-gray-400">Processing…</span>
+                    ) : (
+                      p.title ?? <span className="italic text-gray-400">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">{p.department ?? '—'}</td>
                   <td className="px-4 py-3">

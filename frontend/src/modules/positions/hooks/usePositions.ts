@@ -85,7 +85,7 @@ export interface ManualPositionBody {
   summary?: string | null
 }
 
-export function usePositions(status?: string) {
+export function usePositions(status?: string, polling?: boolean) {
   return useQuery<Position[]>({
     queryKey: ['positions', status],
     queryFn: async () => {
@@ -93,6 +93,9 @@ export function usePositions(status?: string) {
       const { data } = await api.get<Position[]>('/jobs', { params })
       return data
     },
+    staleTime: polling ? 0 : 60000, // Never cache when polling, otherwise 1 minute
+    refetchInterval: polling ? 1000 : false, // Poll every 1 second if enabled
+    refetchIntervalInBackground: true,
   })
 }
 
