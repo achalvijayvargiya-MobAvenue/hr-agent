@@ -1,15 +1,16 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { useLogin } from './useAuth'
+import { useRegister } from './useAuth'
 
-export default function LoginPage() {
+export default function RegisterPage() {
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const login = useLogin()
+  const register = useRegister()
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    login.mutate({ email, password })
+    register.mutate({ email, password, full_name: fullName })
   }
 
   return (
@@ -17,10 +18,25 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-8">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-indigo-600">HR Platform</h1>
-          <p className="mt-1 text-sm text-gray-500">Sign in to your account</p>
+          <p className="mt-1 text-sm text-gray-500">Create a new account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
+              Full Name (Optional)
+            </label>
+            <input
+              id="fullName"
+              type="text"
+              autoComplete="name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              placeholder="John Doe"
+            />
+          </div>
+
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
               Email address
@@ -45,7 +61,7 @@ export default function LoginPage() {
               id="password"
               type="password"
               required
-              autoComplete="current-password"
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -53,26 +69,26 @@ export default function LoginPage() {
             />
           </div>
 
-          {login.isError && (
+          {register.isError && (
             <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              {(login.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-                'Invalid email or password.'}
+              {(register.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
+                'An error occurred during registration.'}
             </p>
           )}
 
           <button
             type="submit"
-            disabled={login.isPending}
+            disabled={register.isPending}
             className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
-            {login.isPending ? 'Signing in…' : 'Sign In'}
+            {register.isPending ? 'Signing up…' : 'Sign Up'}
           </button>
         </form>
 
         <p className="mt-6 text-center text-sm text-gray-500">
-          Don't have an account?{' '}
-          <Link to="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
-            Sign up
+          Already have an account?{' '}
+          <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+            Sign in
           </Link>
         </p>
       </div>
