@@ -317,13 +317,21 @@ class MatchingService:
             return []
 
         logger.info("[MATCH] Found %d structured candidates to evaluate.", len(candidates))
-        cand_map: dict[str, Candidate] = {c.email: c for c in candidates}
+        # Fetch existing results to avoid duplicate processing
+        existing_results = db.query(MatchResult).filter_by(job_id=job_id).all()
+        existing_results_map = {r.candidate_id: r for r in existing_results}
+        
+        new_candidates = [c for c in candidates if c.email not in existing_results_map]
+        
+        if not new_candidates:
+            logger.info("[MATCH] All %d candidates already processed. Returning existing results.", len(candidates))
+            logger.info("=" * 60)
+            return existing_results
+            
+        logger.info("[MATCH] Processing %d new candidates (reusing %d existing).", len(new_candidates), len(existing_results))
 
-        # Clear stale results
-        deleted = db.query(MatchResult).filter_by(job_id=job_id).delete()
-        if deleted:
-            logger.info("[MATCH] Cleared %d stale match results.", deleted)
-        db.commit()
+        candidates = new_candidates
+        cand_map: dict[str, Candidate] = {c.email: c for c in candidates}
 
         # ── Stage 1: Hard filters ──────────────────────────────────────────
         logger.info("[MATCH] ── Stage 1: Hard Filters ──────────────────────")
@@ -361,9 +369,11 @@ class MatchingService:
         )
 
         if not passing:
-            logger.warning("[MATCH] All candidates eliminated — no scoring performed.")
+            logger.warning("[MATCH] All new candidates eliminated — no scoring performed.")
             self._persist(db, all_results)
-            return all_results
+            combined_results = existing_results + all_results
+            logger.info("=" * 60)
+            return combined_results
 
         # ── Stage 2: Rule scores ───────────────────────────────────────────
         logger.info("[MATCH] ── Stage 2: Rule Scores ───────────────────────")
@@ -465,12 +475,15 @@ class MatchingService:
             logger.info("[MATCH] top_k=%d applied — returning %d results.", top_k, len(ranked))
 
         self._persist(db, all_results)
+        
+        combined_results = existing_results + all_results
+        
         logger.info(
-            "[MATCH] Pipeline complete — %d ranked, %d filtered. Job: %s",
-            len(ranked), len(all_results) - len(passing), job_id,
+            "[MATCH] Pipeline complete — %d ranked, %d filtered new candidates. Total results: %d. Job: %s",
+            len(ranked), len(all_results) - len(passing), len(combined_results), job_id,
         )
         logger.info("=" * 60)
-        return all_results
+        return combined_results
 
     # ── Private helpers ───────────────────────────────────────────────────────
 

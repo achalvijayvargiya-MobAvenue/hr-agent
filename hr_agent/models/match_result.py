@@ -1,3 +1,4 @@
+from sqlalchemy import UniqueConstraint
 import uuid
 from datetime import datetime
 
@@ -9,6 +10,10 @@ from hr_agent.database import Base
 
 class MatchResult(Base):
     __tablename__ = "match_results"
+
+    __table_args__ = (
+    UniqueConstraint("job_id", "candidate_id", name="uq_job_candidate"),
+    )
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"), nullable=False)
