@@ -24,6 +24,27 @@ export function useCurrentUser() {
   })
 }
 
+export function useRegister() {
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
+
+  return useMutation({
+    mutationFn: async (credentials: { email: string; password: string; full_name?: string }) => {
+      await api.post('/auth/register', credentials)
+      const { data } = await api.post<{ access_token: string }>('/auth/login', {
+        email: credentials.email,
+        password: credentials.password,
+      })
+      return data
+    },
+    onSuccess: (data) => {
+      setToken(data.access_token)
+      queryClient.invalidateQueries({ queryKey: ['currentUser'] })
+      navigate('/positions')
+    },
+  })
+}
+
 export function useLogin() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
