@@ -4,6 +4,7 @@ import { useCandidate, useDeleteCandidate, type EmploymentEntry, type EducationE
 const SOURCE_STYLES: Record<string, string> = {
   local_kb: 'bg-blue-100 text-blue-800',
   github: 'bg-gray-800 text-white',
+  zoho: 'bg-red-100 text-red-800',
 }
 
 function SourceBadge({ source }: { source: string }) {

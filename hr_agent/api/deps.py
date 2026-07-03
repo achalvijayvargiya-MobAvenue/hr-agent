@@ -15,6 +15,7 @@ from hr_agent.database import SessionLocal, get_db  # re-exported so routers imp
 from hr_agent.services.candidate_sources.github import GitHubSource
 from hr_agent.services.candidate_sources.local_kb import LocalKBSource
 from hr_agent.services.candidate_sources.registry import SourceRegistry, source_registry
+from hr_agent.services.candidate_sources.zoho.source import ZohoSource
 from hr_agent.services.domain_classification_service import DomainClassificationService
 from hr_agent.services.cross_encoder_service import CrossEncoderService
 from hr_agent.services.embedding_service import EmbeddingService
@@ -96,5 +97,8 @@ def get_source_registry() -> SourceRegistry:
 
     github = GitHubSource(db_session_factory=SessionLocal, settings=get_settings())
     source_registry.register(github)
+
+    zoho = ZohoSource(db_session_factory=SessionLocal, settings=get_settings())
+    source_registry.register(zoho)
 
     return source_registry

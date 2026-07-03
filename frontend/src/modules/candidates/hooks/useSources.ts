@@ -83,6 +83,28 @@ export interface FetchResult {
   new_candidates: number
 }
 
+export interface ZohoSyncStatus {
+  entities: Record<string, {
+    last_sync_at: string | null
+    last_modified_time: string | null
+    status: string
+    records_synced: number
+    error_message: string | null
+  }>
+  candidates: {
+    total: number
+    pending: number
+    imported: number
+    failed: number
+  }
+}
+
+export interface ZohoHealth {
+  ok: boolean
+  demo_mode: boolean
+  message: string
+}
+
 // ── Hooks ──────────────────────────────────────────────────────────────────────
 
 export function useSources() {
@@ -105,6 +127,42 @@ export function useFetchCandidates() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['candidates'] })
       queryClient.invalidateQueries({ queryKey: ['candidate-conflicts'] })
+    },
+  })
+}
+
+export function useZohoStatus() {
+  return useQuery<ZohoSyncStatus>({
+    queryKey: ['zoho-status'],
+    queryFn: async () => {
+      const { data } = await api.get<ZohoSyncStatus>('/sources/zoho/status')
+      return data
+    },
+    refetchInterval: 30000,
+  })
+}
+
+export function useZohoHealth() {
+  return useQuery<ZohoHealth>({
+    queryKey: ['zoho-health'],
+    queryFn: async () => {
+      const { data } = await api.get<ZohoHealth>('/sources/zoho/health')
+      return data
+    },
+  })
+}
+
+export function useTriggerZohoSync() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post<{ status: string; message: string }>('/sources/zoho/sync')
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['zoho-status'] })
+      queryClient.invalidateQueries({ queryKey: ['candidates'] })
+      queryClient.invalidateQueries({ queryKey: ['candidate-imports'] })
     },
   })
 }

@@ -20,7 +20,7 @@ _s = get_settings()
 setup_logging(log_level=_s.log_level, log_file=_s.log_file, backup_count=_s.log_backup_days)
 
 import hr_agent.models  # noqa: F401, E402 — registers all ORM models with Base.metadata
-from hr_agent.api import admin, auth, candidates, jobs, matches, sources, taxonomy, users  # noqa: E402
+from hr_agent.api import admin, auth, candidates, jobs, matches, sources, taxonomy, users, zoho  # noqa: E402
 from hr_agent.core.errors import HRAgentError  # noqa: E402
 from hr_agent.database import init_db  # noqa: E402
 
@@ -34,7 +34,11 @@ async def lifespan(_app: FastAPI):
         "HR Agent started — log_level=%s  log_file=%s  db=%s",
         _s.log_level, _s.log_file, _s.database_url,
     )
+    from hr_agent.services.candidate_sources.zoho.scheduler import start_zoho_scheduler, stop_zoho_scheduler
+
+    start_zoho_scheduler(_s)
     yield
+    stop_zoho_scheduler()
     logger.info("HR Agent shutting down.")
 
 
@@ -142,6 +146,7 @@ def create_app() -> FastAPI:
     app.include_router(users.router, prefix="/api/v1")
     app.include_router(users.roles_router, prefix="/api/v1")
     app.include_router(sources.router, prefix="/api/v1")
+    app.include_router(zoho.router, prefix="/api/v1")
 
     return app
 

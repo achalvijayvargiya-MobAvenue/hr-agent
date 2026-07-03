@@ -108,6 +108,17 @@ class Settings(BaseSettings):
     github_enrich_profiles: bool = True
     github_demo_mode: bool = False
 
+    # ── Zoho Recruit candidate source ───────────────────────────────────────────
+    zoho_client_id: str = ""
+    zoho_client_secret: str = ""
+    zoho_refresh_token: str = ""
+    zoho_accounts_url: str = "https://accounts.zoho.com"
+    zoho_recruit_api_url: str = "https://recruit.zoho.com/recruit/v2"
+    zoho_sync_enabled: bool = False
+    zoho_sync_interval_minutes: int = 30
+    zoho_demo_mode: bool = False
+    zoho_sync_page_size: int = 200
+
     # ── CORS ──────────────────────────────────────────────────────────────────
     cors_origins: str = "http://localhost:5173,https://hr-agent-72pq.onrender.com"
 

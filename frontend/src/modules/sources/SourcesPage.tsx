@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSources, useFetchCandidates } from '../candidates/hooks/useSources'
+import { useSources, useFetchCandidates, useZohoStatus, useZohoHealth, useTriggerZohoSync } from '../candidates/hooks/useSources'
 import { usePositions } from '../positions/hooks/usePositions'
 
 interface Toast {
@@ -19,7 +19,10 @@ function AvailabilityDot({ available }: { available: boolean }) {
 export default function SourcesPage() {
   const { data: sources = [], isLoading } = useSources()
   const { data: positions = [] } = usePositions('OPEN')
+  const { data: zohoStatus } = useZohoStatus()
+  const { data: zohoHealth } = useZohoHealth()
   const fetchCandidates = useFetchCandidates()
+  const triggerZohoSync = useTriggerZohoSync()
 
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedPosition, setSelectedPosition] = useState('')
@@ -91,6 +94,35 @@ export default function SourcesPage() {
               </div>
             </div>
             <p className="text-xs text-gray-400 font-mono">{source.name}</p>
+            {source.name === 'zoho' && (
+              <div className="text-xs text-gray-600 space-y-1 border-t border-gray-100 pt-2 mt-1">
+                <p>
+                  Health:{' '}
+                  <span className={zohoHealth?.ok ? 'text-green-600' : 'text-red-600'}>
+                    {zohoHealth?.ok ? 'Connected' : zohoHealth?.message ?? 'Unknown'}
+                  </span>
+                </p>
+                {zohoStatus && (
+                  <p>
+                    Synced candidates: {zohoStatus.candidates.imported}/{zohoStatus.candidates.total}
+                    {zohoStatus.candidates.pending > 0 && (
+                      <> · {zohoStatus.candidates.pending} pending</>
+                    )}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  disabled={!source.is_available || triggerZohoSync.isPending}
+                  onClick={() => triggerZohoSync.mutate(undefined, {
+                    onSuccess: (data) => showToast(data.message),
+                    onError: () => showToast('Zoho sync failed.', 'error'),
+                  })}
+                  className="mt-2 rounded-md border border-gray-200 px-2 py-1 text-xs hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {triggerZohoSync.isPending ? 'Syncing…' : 'Sync Now'}
+                </button>
+              </div>
+            )}
           </div>
         ))}
 
