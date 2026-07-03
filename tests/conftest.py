@@ -65,14 +65,14 @@ def auth_headers(client):
     client.post(
         "/api/v1/auth/register",
         json={
-            "email": "user@test.local",
+            "email": "user@mobavenue.com",
             "password": "TestPass123!",
             "full_name": "Test User",
         },
     )
     resp = client.post(
         "/api/v1/auth/login",
-        json={"email": "user@test.local", "password": "TestPass123!"},
+        json={"email": "user@mobavenue.com", "password": "TestPass123!"},
     )
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}
 
@@ -89,7 +89,7 @@ def admin_headers(client, test_db):
     resp = client.post(
         "/api/v1/auth/register",
         json={
-            "email": "admin@test.local",
+            "email": "admin@mobavenue.com",
             "password": "AdminPass123!",
             "full_name": "Admin User",
         },
@@ -106,7 +106,7 @@ def admin_headers(client, test_db):
 
     resp = client.post(
         "/api/v1/auth/login",
-        json={"email": "admin@test.local", "password": "AdminPass123!"},
+        json={"email": "admin@mobavenue.com", "password": "AdminPass123!"},
     )
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}
 

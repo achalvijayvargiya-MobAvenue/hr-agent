@@ -10,7 +10,7 @@ _REGISTER_URL = "/api/v1/auth/register"
 _LOGIN_URL = "/api/v1/auth/login"
 _ME_URL = "/api/v1/auth/me"
 
-_USER = {"email": "alice@example.com", "password": "AlicePass123!", "full_name": "Alice"}
+_USER = {"email": "alice@mobavenue.com", "password": "AlicePass123!", "full_name": "Alice"}
 
 
 def test_register_success(client):
@@ -49,7 +49,7 @@ def test_me_authenticated(client, auth_headers):
     resp = client.get(_ME_URL, headers=auth_headers)
     assert resp.status_code == 200
     body = resp.json()
-    assert body["email"] == "user@test.local"
+    assert body["email"] == "user@mobavenue.com"
     assert "id" in body
 
 
@@ -57,3 +57,10 @@ def test_me_unauthenticated(client):
     resp = client.get(_ME_URL)
     assert resp.status_code == 401
     assert resp.json()["error"] == "UNAUTHORIZED"
+
+
+def test_register_invalid_domain(client):
+    bad_user = {"email": "bob@gmail.com", "password": "BobPass123!", "full_name": "Bob"}
+    resp = client.post(_REGISTER_URL, json=bad_user)
+    assert resp.status_code == 422
+    assert "Only @mobavenue.com email addresses are allowed" in str(resp.json())

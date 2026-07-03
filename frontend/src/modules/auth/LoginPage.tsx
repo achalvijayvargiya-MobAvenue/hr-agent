@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useLogin } from './useAuth'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const login = useLogin()
+  const location = useLocation()
+  const successMessage = (location.state as any)?.successMessage
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -19,6 +21,12 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-indigo-600">HR Platform</h1>
           <p className="mt-1 text-sm text-gray-500">Sign in to your account</p>
         </div>
+
+        {successMessage && (
+          <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-lg text-sm border border-green-200 text-center">
+            {successMessage}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>

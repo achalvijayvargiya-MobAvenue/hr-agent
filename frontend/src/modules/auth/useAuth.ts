@@ -30,17 +30,11 @@ export function useRegister() {
 
   return useMutation({
     mutationFn: async (credentials: { email: string; password: string; full_name?: string }) => {
-      await api.post('/auth/register', credentials)
-      const { data } = await api.post<{ access_token: string }>('/auth/login', {
-        email: credentials.email,
-        password: credentials.password,
-      })
+      const { data } = await api.post('/auth/register', credentials)
       return data
     },
-    onSuccess: (data) => {
-      setToken(data.access_token)
-      queryClient.invalidateQueries({ queryKey: ['currentUser'] })
-      navigate('/positions')
+    onSuccess: () => {
+      navigate('/login', { state: { successMessage: 'Registration successful! Please log in.' } })
     },
   })
 }

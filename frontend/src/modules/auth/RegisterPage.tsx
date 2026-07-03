@@ -6,10 +6,25 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [localError, setLocalError] = useState<string | null>(null)
   const register = useRegister()
+  
+  const responseData = (register.error as any)?.response?.data
+  const backendErrorDetail = responseData?.detail
+  const backendErrorMessage = responseData?.message 
+    || (Array.isArray(backendErrorDetail) ? backendErrorDetail[0]?.msg : backendErrorDetail)
+    || (register.error as Error)?.message
+    || String(register.error)
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    setLocalError(null)
+
+    if (!email.endsWith('@mobavenue.com')) {
+      setLocalError('Only @mobavenue.com email addresses are allowed.')
+      return
+    }
+
     register.mutate({ email, password, full_name: fullName })
   }
 
@@ -45,12 +60,17 @@ export default function RegisterPage() {
               id="email"
               type="email"
               required
+              pattern=".*@mobavenue\.com$"
+              title="Must be a @mobavenue.com email address"
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="you@example.com"
+              placeholder="you@mobavenue.com"
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Please use your @mobavenue.com organization email
+            </p>
           </div>
 
           <div>
@@ -69,10 +89,9 @@ export default function RegisterPage() {
             />
           </div>
 
-          {register.isError && (
+          {(localError || register.isError) && (
             <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              {(register.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-                'An error occurred during registration.'}
+              {localError || backendErrorMessage || 'An error occurred during registration.'}
             </p>
           )}
 

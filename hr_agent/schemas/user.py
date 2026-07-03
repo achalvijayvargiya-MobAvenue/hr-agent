@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class UserCreate(BaseModel):
@@ -8,7 +8,12 @@ class UserCreate(BaseModel):
     password: str
     full_name: str | None = None
 
-
+    @field_validator("email")
+    @classmethod
+    def validate_email_domain(cls, v: str) -> str:
+        if not v.endswith("@mobavenue.com"):
+            raise ValueError("Only @mobavenue.com email addresses are allowed.")
+        return v
 class UserResponse(BaseModel):
     id: str
     email: str
