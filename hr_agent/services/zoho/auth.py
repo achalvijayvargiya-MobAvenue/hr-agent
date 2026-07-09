@@ -1,19 +1,45 @@
 import logging
 import time
 import requests
+import json
+import os
 from pydantic import BaseModel
 from hr_agent.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+CACHE_FILE = ".zoho_token.json"
 
 class ZohoTokenCache(BaseModel):
     access_token: str
     expires_at: float
 
 class ZohoAuthManager:
+    # Class-level cache shared across all instances
+    _token_cache: ZohoTokenCache | None = None
+
     def __init__(self):
         self.settings = get_settings()
-        self._token_cache: ZohoTokenCache | None = None
+        self._load_cache_from_file()
+
+    def _load_cache_from_file(self):
+        if ZohoAuthManager._token_cache is None and os.path.exists(CACHE_FILE):
+            try:
+                with open(CACHE_FILE, "r") as f:
+                    data = json.load(f)
+                    ZohoAuthManager._token_cache = ZohoTokenCache(**data)
+                    logger.debug("Loaded Zoho token cache from file.")
+            except Exception as e:
+                logger.warning(f"Failed to load token cache file: {e}")
+
+    def _save_cache_to_file(self):
+        if ZohoAuthManager._token_cache:
+            try:
+                with open(CACHE_FILE, "w") as f:
+                    json.dump(ZohoAuthManager._token_cache.model_dump(), f)
+                    logger.debug("Saved Zoho token cache to file.")
+            except Exception as e:
+                logger.warning(f"Failed to save token cache file: {e}")
 
     def get_valid_access_token(self) -> str:
         """Returns a valid access token, fetching a new one if necessary."""
@@ -21,8 +47,8 @@ class ZohoAuthManager:
             raise ValueError("Zoho credentials (client_id, client_secret, refresh_token) are not fully configured.")
 
         # Check if we have a valid cached token (with 60s buffer)
-        if self._token_cache and self._token_cache.expires_at > (time.time() + 60):
-            return self._token_cache.access_token
+        if ZohoAuthManager._token_cache and ZohoAuthManager._token_cache.expires_at > (time.time() + 60):
+            return ZohoAuthManager._token_cache.access_token
 
         return self._refresh_token()
 
@@ -51,9 +77,10 @@ class ZohoAuthManager:
         access_token = json_data["access_token"]
         expires_in = int(json_data.get("expires_in", 3600))
         
-        self._token_cache = ZohoTokenCache(
+        ZohoAuthManager._token_cache = ZohoTokenCache(
             access_token=access_token,
             expires_at=time.time() + expires_in
         )
+        self._save_cache_to_file()
         
         return access_token

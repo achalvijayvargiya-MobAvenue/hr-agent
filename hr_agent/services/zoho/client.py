@@ -1,6 +1,8 @@
 import logging
 from typing import Any
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from hr_agent.config import get_settings
 from hr_agent.services.zoho.auth import ZohoAuthManager
@@ -11,10 +13,24 @@ class ZohoRecruitClient:
     def __init__(self):
         self.settings = get_settings()
         self.auth_manager = ZohoAuthManager()
-        # Zoho Recruit API base URL (V2)
         # We extract the TLD from accounts.zoho.in -> zoho.in
         tld = self.settings.zoho_dc.split(".")[-1]
         self.base_url = f"https://recruit.zoho.{tld}/recruit/v2"
+        self.session = self._create_retry_session()
+
+    def _create_retry_session(self) -> requests.Session:
+        session = requests.Session()
+        # Retry on standard rate limits (429) and server errors (500, 502, 503, 504)
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["HEAD", "GET", "OPTIONS"]
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("https://", adapter)
+        session.mount("http://", adapter)
+        return session
 
     def _get_headers(self) -> dict[str, str]:
         token = self.auth_manager.get_valid_access_token()
@@ -28,7 +44,12 @@ class ZohoRecruitClient:
         headers = self._get_headers()
         
         logger.info(f"Fetching Job Openings from Zoho: {url}")
-        response = requests.get(url, headers=headers)
+        try:
+            response = self.session.get(url, headers=headers)
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request failed after retries: {e}")
+            return []
+            
         if response.status_code == 204:
             return []
         if response.status_code != 200:
@@ -46,7 +67,12 @@ class ZohoRecruitClient:
         }
         headers = self._get_headers()
         
-        response = requests.get(url, headers=headers, params=params)
+        try:
+            response = self.session.get(url, headers=headers, params=params)
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request failed after retries for job {job_id}: {e}")
+            return []
+            
         if response.status_code == 204:
             return []
         elif response.status_code != 200:
@@ -61,7 +87,12 @@ class ZohoRecruitClient:
         url = f"{self.base_url}/Candidates/{candidate_id}"
         headers = self._get_headers()
         
-        response = requests.get(url, headers=headers)
+        try:
+            response = self.session.get(url, headers=headers)
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request failed after retries for candidate {candidate_id}: {e}")
+            return None
+            
         if response.status_code != 200:
             logger.error(f"Failed to fetch candidate {candidate_id}: {response.text}")
             return None
@@ -75,7 +106,12 @@ class ZohoRecruitClient:
         url = f"{self.base_url}/Candidates/{candidate_id}/Attachments"
         headers = self._get_headers()
         
-        response = requests.get(url, headers=headers)
+        try:
+            response = self.session.get(url, headers=headers)
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request failed after retries for attachments metadata for candidate {candidate_id}: {e}")
+            return []
+            
         if response.status_code == 204:
             return []
         elif response.status_code != 200:
@@ -90,7 +126,12 @@ class ZohoRecruitClient:
         url = f"{self.base_url}/Candidates/{candidate_id}/Attachments/{attachment_id}"
         headers = self._get_headers()
         
-        response = requests.get(url, headers=headers)
+        try:
+            response = self.session.get(url, headers=headers)
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request failed after retries for attachment {attachment_id} for candidate {candidate_id}: {e}")
+            return None
+            
         if response.status_code != 200:
             logger.error(f"Failed to download attachment {attachment_id} for candidate {candidate_id}")
             return None
