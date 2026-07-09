@@ -108,6 +108,12 @@ class Settings(BaseSettings):
     github_enrich_profiles: bool = True
     github_demo_mode: bool = False
 
+    # ── Zoho Recruit ────────────────────────────────────────────────────────────
+    zoho_client_id: str = ""
+    zoho_client_secret: str = ""
+    zoho_refresh_token: str = ""
+    zoho_dc: str = "accounts.zoho.in"
+
     # ── CORS ──────────────────────────────────────────────────────────────────
     cors_origins: str = "http://localhost:5173,https://hr-agent-72pq.onrender.com"
 
@@ -115,6 +121,14 @@ class Settings(BaseSettings):
     secret_key: str = "dev-secret-change-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
+
+    # ── Email Settings ────────────────────────────────────────────────────────
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    emails_from_email: str = ""
+    frontend_url: str = "http://localhost:5173"
 
     @property
     def cors_origins_list(self) -> list[str]:

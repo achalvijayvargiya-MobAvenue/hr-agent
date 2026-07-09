@@ -5,7 +5,8 @@ import logging
 
 from sqlalchemy.orm import Session
 
-from hr_agent.core.security import create_access_token, hash_password, verify_password
+from datetime import timedelta
+from hr_agent.core.security import create_access_token, decode_access_token, hash_password, verify_password
 from hr_agent.models.role import Role
 from hr_agent.models.user import User
 from hr_agent.models.user_role import UserRole
@@ -56,6 +57,39 @@ class AuthService:
         token = create_access_token({"sub": user.id, "email": user.email})
         logger.info("User logged in email=%s id=%s", user.email, user.id)
         return token
+
+    def generate_password_reset_token(self, email: str) -> str:
+        """Generate a short-lived password reset token for the given email. Raises ValueError if not found."""
+        user = self._db.query(User).filter_by(email=email).first()
+        if not user:
+            raise ValueError(f"User with email {email} not found")
+        
+        token = create_access_token(
+            {"sub": user.id, "type": "password_reset"}, 
+            expires_delta=timedelta(minutes=15)
+        )
+        logger.info("Generated password reset token for email=%s", email)
+        return token
+    
+    def reset_password(self, token: str, new_password: str) -> None:
+        """Reset the user's password using the token. Raises ValueError if token is invalid or expired."""
+        try:
+            payload = decode_access_token(token)
+            if payload.get("type") != "password_reset":
+                raise ValueError("Invalid token type")
+            user_id = payload.get("sub")
+            if not user_id:
+                raise ValueError("Invalid token payload")
+        except Exception as e:
+            raise ValueError(f"Invalid or expired token: {e}")
+        
+        user = self._db.query(User).filter_by(id=user_id).first()
+        if not user:
+            raise ValueError("User not found")
+            
+        user.hashed_password = hash_password(new_password)
+        self._db.commit()
+        logger.info("Password reset successful for user id=%s", user.id)
 
     def get_user_by_id(self, user_id: str) -> User | None:
         """Return the User with the given ID, or None if not found."""

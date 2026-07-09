@@ -42,3 +42,10 @@ class UserUpdate(BaseModel):
 
 class RoleAssign(BaseModel):
     role_name: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str

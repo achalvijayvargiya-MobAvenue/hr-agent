@@ -7,14 +7,16 @@ GET  /auth/me        — return the current user's profile
 """
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from hr_agent.api.deps import get_current_user, get_db
+from hr_agent.config import get_settings
 from hr_agent.core.errors import ConflictError, UnauthorizedError
 from hr_agent.models.user import User
-from hr_agent.schemas.user import LoginRequest, TokenResponse, UserCreate, UserResponse
+from hr_agent.schemas.user import LoginRequest, TokenResponse, UserCreate, UserResponse, ForgotPasswordRequest, ResetPasswordRequest
 from hr_agent.services.auth_service import AuthService
+from hr_agent.services.email_service import EmailService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -62,3 +64,32 @@ def me(
 ) -> UserResponse:
     svc = AuthService(db)
     return _build_user_response(current_user, svc)
+
+
+@router.post("/forgot-password")
+def forgot_password(
+    body: ForgotPasswordRequest, 
+    background_tasks: BackgroundTasks, 
+    db: Session = Depends(get_db)
+):
+    svc = AuthService(db)
+    try:
+        token = svc.generate_password_reset_token(body.email)
+        frontend_url = get_settings().frontend_url.rstrip('/')
+        reset_link = f"{frontend_url}/reset-password?token={token}"
+        email_svc = EmailService()
+        background_tasks.add_task(email_svc.send_reset_password_email, body.email, reset_link)
+    except ValueError as exc:
+        # Don't reveal if user exists or not for security, just log it.
+        logger.debug(f"Forgot password requested for non-existent email: {body.email}")
+    return {"message": "If that email is registered, we have sent a password reset link to it."}
+
+
+@router.post("/reset-password")
+def reset_password(body: ResetPasswordRequest, db: Session = Depends(get_db)):
+    svc = AuthService(db)
+    try:
+        svc.reset_password(body.token, body.new_password)
+    except ValueError as exc:
+        raise UnauthorizedError(message=str(exc))
+    return {"message": "Password has been successfully reset."}
