@@ -6,10 +6,14 @@ import {
   useCandidates,
   useSources,
   useDeleteCandidate,
+  useDeleteCandidatesBulk,
+  useClearPendingImports,
   useCandidateConflicts,
   useCandidateImports,
   useResolveConflict,
   useDismissImport,
+  useSyncZohoCandidates,
+  useZohoJobs,
   type CandidateConflict,
   type CandidateImport,
 } from './hooks/useSources'
@@ -17,6 +21,7 @@ import {
 const SOURCE_STYLES: Record<string, string> = {
   local_kb: 'bg-blue-100 text-blue-800',
   github: 'bg-gray-800 text-white',
+  zoho_forms: 'bg-purple-100 text-purple-800',
 }
 
 function SourceBadge({ source }: { source: string }) {
@@ -137,9 +142,17 @@ export default function CandidatesPage() {
   const { data: candidates = [], isLoading, isError } = useCandidates(sourceFilter || undefined)
   const { data: conflicts = [] } = useCandidateConflicts()
   const { data: imports = [] } = useCandidateImports()
+  const { data: zohoJobs = [], isLoading: isLoadingJobs } = useZohoJobs()
+
+  const [isJobModalOpen, setIsJobModalOpen] = useState(false)
+  const [selectedJobs, setSelectedJobs] = useState<string[]>([])
+
   const deleteCandidate = useDeleteCandidate()
+  const deleteCandidatesBulk = useDeleteCandidatesBulk()
+  const clearPendingImports = useClearPendingImports()
   const resolveConflict = useResolveConflict()
   const dismissImport = useDismissImport()
+  const syncZohoCandidates = useSyncZohoCandidates()
 
   const processingCount = imports.filter((i) => i.status === 'PROCESSING').length
   const failedImports = imports.filter((i) => i.status === 'FAILED')
@@ -157,6 +170,22 @@ export default function CandidatesPage() {
 
   function handleDismiss(importId: string) {
     dismissImport.mutate(importId)
+  }
+
+  function handleDeleteAllZoho() {
+    const count = candidates.filter((c) => c.source_name === 'zoho').length
+    if (!window.confirm(`Delete all ${count} Zoho candidates permanently? This cannot be undone.`)) return
+    deleteCandidatesBulk.mutate('zoho', {
+      onSuccess: (data) => setUploadMessage(data.message),
+      onError: () => setUploadError('Failed to delete Zoho candidates.'),
+    })
+  }
+
+  function handleClearQueue() {
+    clearPendingImports.mutate(undefined, {
+      onSuccess: (data) => setUploadMessage(`Cleared ${data.cleared_count} stuck pending imports.`),
+      onError: () => setUploadError('Failed to clear pending imports.'),
+    })
   }
 
   // Upload CV
@@ -241,13 +270,101 @@ export default function CandidatesPage() {
           >
             {uploading ? 'Uploading…' : 'Upload CV'}
           </button>
+          <button
+            onClick={() => setIsJobModalOpen(true)}
+            disabled={syncZohoCandidates.isPending || uploading}
+            className="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          >
+            {syncZohoCandidates.isPending ? 'Syncing…' : 'Sync Zoho Candidates'}
+          </button>
+          <button
+            onClick={handleDeleteAllZoho}
+            disabled={deleteCandidatesBulk.isPending || candidates.filter(c => c.source_name === 'zoho').length === 0}
+            className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          >
+            {deleteCandidatesBulk.isPending ? 'Deleting…' : 'Delete All Zoho'}
+          </button>
         </div>
         <span className="text-sm text-gray-400">{filtered.length} candidate{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 
+      {/* Job Selection Modal */}
+      {isJobModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 max-h-[80vh] flex flex-col">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Select Zoho Jobs to Sync</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Choose which job openings you want to extract candidates from. If none are selected, all candidates will be synced.
+            </p>
+            
+            <div className="flex-1 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-2 mb-4">
+              {isLoadingJobs ? (
+                <p className="text-sm text-gray-500 p-2">Loading jobs...</p>
+              ) : zohoJobs.length === 0 ? (
+                <p className="text-sm text-gray-500 p-2">No active jobs found in Zoho.</p>
+              ) : (
+                zohoJobs.map(job => (
+                  <label key={job.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input 
+                      type="checkbox"
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      checked={selectedJobs.includes(job.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedJobs(prev => [...prev, job.id])
+                        } else {
+                          setSelectedJobs(prev => prev.filter(id => id !== job.id))
+                        }
+                      }}
+                    />
+                    <span className="text-sm font-medium text-gray-900">
+                      {job.Posting_Title || job.Job_Opening_Name || `Job ${job.id}`}
+                    </span>
+                  </label>
+                ))
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 mt-auto">
+              <button
+                onClick={() => {
+                  setIsJobModalOpen(false)
+                  setSelectedJobs([])
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setIsJobModalOpen(false)
+                  setUploadMessage(null)
+                  setUploadError(null)
+                  syncZohoCandidates.mutate(selectedJobs, {
+                    onSuccess: (data) => setUploadMessage(data.message),
+                    onError: () => setUploadError("Failed to sync Zoho candidates.")
+                  })
+                  setSelectedJobs([])
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg"
+              >
+                Start Sync
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {processingCount > 0 && (
-        <div className="mb-4 rounded-lg bg-blue-50 border border-blue-200 px-4 py-2 text-sm text-blue-700">
-          {processingCount} CV{processingCount !== 1 ? 's' : ''} processing in background…
+        <div className="mb-4 rounded-lg bg-blue-50 border border-blue-200 px-4 py-2 text-sm text-blue-700 flex items-center justify-between">
+          <span>{processingCount} CV{processingCount !== 1 ? 's' : ''} processing in background…</span>
+          <button
+            onClick={handleClearQueue}
+            disabled={clearPendingImports.isPending}
+            className="ml-4 text-xs font-medium text-blue-600 hover:text-blue-800 underline disabled:opacity-50"
+          >
+            {clearPendingImports.isPending ? 'Clearing…' : 'Clear queue'}
+          </button>
         </div>
       )}
 

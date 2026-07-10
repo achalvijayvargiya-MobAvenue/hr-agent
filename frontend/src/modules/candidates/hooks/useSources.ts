@@ -43,6 +43,11 @@ export interface Candidate {
   source_name: string
   status: string
   created_at: string
+  
+  // Zoho Forms fields (optional, for merged candidates)
+  zoho_submission_id?: string
+  zoho_form_id?: string
+  data_sources?: Record<string, string[]>
 }
 
 export interface CandidateImport {
@@ -81,6 +86,13 @@ export interface FetchResult {
   sources_queried: string[]
   total_records: number
   new_candidates: number
+}
+
+export interface ZohoJob {
+  id: string
+  Posting_Title?: string
+  Job_Opening_Name?: string
+  [key: string]: any
 }
 
 // ── Hooks ──────────────────────────────────────────────────────────────────────
@@ -189,6 +201,62 @@ export function useDeleteCandidate() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['candidates'] })
+    },
+  })
+}
+
+export function useSyncZohoCandidates() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (jobIds?: string[]) => {
+      const payload = jobIds && jobIds.length > 0 ? { job_ids: jobIds } : {}
+      const { data } = await api.post<{ message: string; queued_count: number }>('/candidates/sync-zoho', payload)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidates'] })
+      queryClient.invalidateQueries({ queryKey: ['candidate-imports'] })
+      queryClient.invalidateQueries({ queryKey: ['candidate-conflicts'] })
+    },
+  })
+}
+
+export function useZohoJobs() {
+  return useQuery<ZohoJob[]>({
+    queryKey: ['zoho-jobs'],
+    queryFn: async () => {
+      const { data } = await api.get<ZohoJob[]>('/candidates/zoho/jobs')
+      return data
+    },
+  })
+}
+
+export function useDeleteCandidatesBulk() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (sourceName?: string) => {
+      const params = sourceName ? { source_name: sourceName } : {}
+      const { data } = await api.delete<{ deleted_count: number; message: string }>('/candidates', { params })
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidates'] })
+      queryClient.invalidateQueries({ queryKey: ['candidate-imports'] })
+      queryClient.invalidateQueries({ queryKey: ['candidate-conflicts'] })
+    },
+  })
+}
+
+export function useClearPendingImports() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (sourceName?: string) => {
+      const params = sourceName ? { source_name: sourceName } : {}
+      const { data } = await api.delete<{ cleared_count: number; message: string }>('/candidates/imports/clear', { params })
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidate-imports'] })
     },
   })
 }

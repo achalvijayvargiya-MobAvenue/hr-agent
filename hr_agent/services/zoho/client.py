@@ -59,13 +59,55 @@ class ZohoRecruitClient:
         data = response.json()
         return data.get("data", [])
 
+    def get_all_candidates(self) -> list[dict[str, Any]]:
+        """Fetch all candidates from Zoho Recruit."""
+        url = f"{self.base_url}/Candidates"
+        headers = self._get_headers()
+        
+        logger.info(f"Fetching all Candidates from Zoho: {url}")
+        try:
+            response = self.session.get(url, headers=headers)
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request failed after retries: {e}")
+            return []
+            
+        if response.status_code == 204:
+            return []
+        if response.status_code != 200:
+            logger.error(f"Failed to fetch candidates: {response.text}")
+            return []
+            
+        data = response.json()
+        return data.get("data", [])
+
     def get_applications_for_job(self, job_id: str) -> list[dict[str, Any]]:
         """Fetch all applications linked to a specific job opening."""
+        headers = self._get_headers()
+        
+        # Step 1: Fetch the Job Opening to get its string Job_Opening_ID (e.g. 'ZR_26_JOB')
+        job_url = f"{self.base_url}/Job_Openings/{job_id}"
+        try:
+            job_resp = self.session.get(job_url, headers=headers)
+            if job_resp.status_code != 200:
+                logger.error(f"Failed to fetch job details for {job_id}: {job_resp.text}")
+                return []
+            job_data = job_resp.json().get("data", [])
+            if not job_data:
+                return []
+            job_opening_string_id = job_data[0].get("Job_Opening_ID")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to fetch job details for {job_id}: {e}")
+            return []
+            
+        if not job_opening_string_id:
+            logger.warning(f"No string Job_Opening_ID found for job {job_id}")
+            return []
+
+        # Step 2: Search Applications using the string Job_Opening_ID
         url = f"{self.base_url}/Applications/search"
         params = {
-            "criteria": f"(Job_Opening_ID:equals:{job_id})"
+            "criteria": f"(Job_Opening_ID:equals:{job_opening_string_id})"
         }
-        headers = self._get_headers()
         
         try:
             response = self.session.get(url, headers=headers, params=params)

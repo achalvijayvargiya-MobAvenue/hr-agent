@@ -55,6 +55,7 @@ async def sync_zoho():
                 db_job = Job(
                     id=z_job_id,
                     title=title,
+                    normalized_role=title,   # use job title as role label for matching
                     summary=desc,
                     raw_text=full_text,
                     position_status="OPEN",

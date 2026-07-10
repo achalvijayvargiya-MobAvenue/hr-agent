@@ -223,12 +223,21 @@ class MatchingService:
         existing_results = db.query(MatchResult).filter_by(job_id=job_id).all()
         existing_results_map = {r.candidate_id: r for r in existing_results}
 
-        query = db.query(Candidate).filter(Candidate.normalized_role.isnot(None))
+        query = db.query(Candidate)
+        # Candidates must have either a normalized_role (LLM-extracted) or at
+        # minimum a current_title (Zoho direct-sync). For direct Zoho candidates
+        # that were synced before we started writing normalized_role, backfill it
+        # inline from current_title so they are included in this match run.
+        query = query.filter(
+            (Candidate.normalized_role.isnot(None)) |
+            (Candidate.current_title.isnot(None))
+        )
         if source_filter:
             query = query.filter(Candidate.source_name.in_(source_filter))
             logger.info("[MATCH] source_filter=%s applied.", source_filter)
 
         # ── Pool scope (Phase 2+3) ───────────────────────────────────────────
+
         if self._settings.match_pool_only:
             pool_rows = (
                 db.query(JobCandidatePool)
@@ -449,13 +458,24 @@ class MatchingService:
             logger.error("[MATCH] Job %r not found in DB.", job_id)
             raise ValueError(f"Job {job_id!r} not found.")
         if job.normalized_role is None:
-            logger.error(
-                "[MATCH] Job %r has not been extracted yet (normalized_role is NULL).", job_id
-            )
-            raise ValueError(
-                f"Job {job_id!r} has not been extracted yet. "
-                "Wait for processing status STRUCTURED before running matching."
-            )
+            # For Zoho-synced jobs the LLM extraction may not have run yet.
+            # Fall back to the job title as the role label — it is descriptive
+            # enough for role_match_score, which already handles freeform labels.
+            if job.title:
+                logger.warning(
+                    "[MATCH] Job %r has no normalized_role — using title %r as fallback.",
+                    job_id, job.title,
+                )
+                job.normalized_role = job.title
+                db.commit()
+            else:
+                logger.error(
+                    "[MATCH] Job %r has no normalized_role and no title — cannot run matching.", job_id
+                )
+                raise ValueError(
+                    f"Job {job_id!r} has no title or normalized_role. "
+                    "Please add a title or wait for LLM extraction to complete."
+                )
         return job
 
     def _apply_retrieval_scores(

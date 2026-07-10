@@ -40,6 +40,12 @@ class Candidate(Base):
     domain_source: Mapped[str | None] = mapped_column(String, nullable=True)  # auto | manual
     domain_evidence: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
+    # Zoho Forms integration fields
+    zoho_submission_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    zoho_form_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    data_sources: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    last_zoho_sync: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     source_name: Mapped[str] = mapped_column(String, nullable=False, default="local_kb")
 
     raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)

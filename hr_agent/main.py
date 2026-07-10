@@ -133,6 +133,23 @@ def create_app() -> FastAPI:
     def health_v1() -> JSONResponse:
         return JSONResponse({"status": "ok"})
 
+    @app.get("/test-zoho/{job_id}", tags=["system"])
+    def test_zoho(job_id: str) -> JSONResponse:
+        from hr_agent.services.zoho.client import ZohoRecruitClient
+        zoho_client = ZohoRecruitClient()
+        
+        # Fetch some applications to see how they are structured
+        url = f"{zoho_client.base_url}/Applications"
+        r = zoho_client.session.get(url, headers=zoho_client._get_headers())
+        
+        if r.status_code == 200:
+            apps = r.json().get("data", [])
+            # Let's collect the first 3 apps to see their fields
+            sample = apps[:3] if apps else []
+            return JSONResponse({"status": 200, "count": len(apps), "sample": sample})
+        
+        return JSONResponse({"status": r.status_code, "text": r.text[:200]})
+
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(jobs.router, prefix="/api/v1")
     app.include_router(candidates.router, prefix="/api/v1")

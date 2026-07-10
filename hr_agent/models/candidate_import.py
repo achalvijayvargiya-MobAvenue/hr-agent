@@ -34,6 +34,12 @@ class CandidateImport(Base):
     name: Mapped[str | None] = mapped_column(String, nullable=True)
     location: Mapped[str | None] = mapped_column(String, nullable=True)
 
+    # Zoho Forms integration fields
+    zoho_submission_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    zoho_form_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    zoho_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    merge_strategy: Mapped[str | None] = mapped_column(String, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )

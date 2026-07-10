@@ -75,6 +75,53 @@ def create_candidate_from_extraction(
     return candidate
 
 
+def create_candidate_from_zoho_merge(
+    db: Session,
+    *,
+    email: str,
+    merged_data,
+    raw_text: str,
+    zoho_submission_id: str | None = None,
+    zoho_form_id: str | None = None,
+) -> Candidate:
+    """Insert a new Candidate keyed by email using merged data from Zoho Forms."""
+    candidate = Candidate(
+        email=email,
+        raw_text=raw_text,
+        source_name="zoho_forms",
+        zoho_submission_id=zoho_submission_id,
+        zoho_form_id=zoho_form_id,
+        data_sources=merged_data.data_sources,
+    )
+    
+    candidate.name = merged_data.name
+    candidate.current_title = merged_data.current_title
+    candidate.normalized_role = merged_data.normalized_role
+    candidate.years_experience = merged_data.years_experience
+    candidate.current_company = merged_data.current_company
+    candidate.location = merged_data.location
+    candidate.skills = merged_data.skills
+    candidate.tools_and_technologies = merged_data.tools_and_technologies
+    candidate.education = merged_data.education
+    candidate.certifications = merged_data.certifications
+    candidate.employment_history = merged_data.employment_history
+    candidate.industries = merged_data.industries
+    candidate.experience_areas = merged_data.experience_areas
+    candidate.responsibilities = merged_data.responsibilities
+    candidate.seniority_level = merged_data.seniority_level
+    candidate.summary = merged_data.summary
+    
+    db.add(candidate)
+
+    log = ProcessingLog(
+        entity_type="candidate",
+        entity_id=email,
+        status=ProcessingStatus.STRUCTURED,
+    )
+    db.add(log)
+    return candidate
+
+
 def resolve_import_conflict(
     db: Session,
     import_row: CandidateImport,

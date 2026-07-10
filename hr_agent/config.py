@@ -3,9 +3,12 @@ Central configuration — all tuneable values live here.
 Override any value via environment variable or a .env file.
 """
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
 class ScoreWeights(BaseSettings):
@@ -56,7 +59,7 @@ class RuleSubWeights(BaseSettings):
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(PROJECT_ROOT / ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )

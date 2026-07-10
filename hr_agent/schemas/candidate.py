@@ -30,9 +30,9 @@ class CVExtracted(BaseModel):
     """
 
     email: str | None = None
-    candidate_name: str
+    candidate_name: str | None = None
     current_title: str | None = None
-    normalized_role: str
+    normalized_role: str | None = None
     years_experience: float | None = None
     current_company: str | None = None
     location: str | None = None
@@ -45,7 +45,7 @@ class CVExtracted(BaseModel):
     experience_areas: list[str] = Field(default_factory=list)
     responsibilities: list[str] = Field(default_factory=list)
     seniority_level: str | None = None
-    summary: str
+    summary: str | None = None
 
 
 class CandidateResponse(BaseModel):
@@ -78,6 +78,11 @@ class CandidateResponse(BaseModel):
     source_name: str = "local_kb"
     status: str
     created_at: datetime
+    
+    # Zoho Forms fields
+    zoho_submission_id: str | None = None
+    zoho_form_id: str | None = None
+    data_sources: dict[str, list[str]] = Field(default_factory=dict)
 
     model_config = {"from_attributes": True}
 
@@ -88,6 +93,20 @@ class CandidateUploadResponse(BaseModel):
     message: str
     conflict: bool = False
     candidate_email: str | None = None
+    zoho_submission_id: str | None = None
+
+
+class SyncZohoRequest(BaseModel):
+    job_ids: list[str] | None = Field(
+        default=None, 
+        description="Optional list of Zoho Job Opening IDs to restrict the sync to."
+    )
+
+
+class ZohoFormImportRequest(BaseModel):
+    submission_id: str
+    form_id: str
+    merge_strategy: Literal["standard", "resume_priority", "zoho_priority"] = "standard"
 
 
 class CandidateImportResponse(BaseModel):
