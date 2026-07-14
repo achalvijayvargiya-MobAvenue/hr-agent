@@ -2,11 +2,11 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from hr_agent.database import Base
-from hr_agent.models.candidate import Candidate
-from hr_agent.models.job import Job
-from hr_agent.models.match_result import MatchResult
-from hr_agent.services.matching_service import MatchingService
+from hr_agent.core.database import Base
+from hr_agent.modules.candidates.models import Candidate
+from hr_agent.modules.jobs.models import Job
+from hr_agent.modules.matching.models import MatchResult
+from hr_agent.modules.matching.service import MatchingService
 
 
 def test_persist_upserts_existing_row():

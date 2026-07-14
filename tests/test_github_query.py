@@ -1,6 +1,6 @@
 """Tests for GitHub search query builder."""
-from hr_agent.models.job import Job
-from hr_agent.services.candidate_sources.github_query import (
+from hr_agent.modules.jobs.models import Job
+from hr_agent.modules.integrations.candidate_sources.github_query import (
     build_github_search_query,
     plan_github_search,
 )

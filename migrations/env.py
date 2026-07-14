@@ -8,8 +8,8 @@ from sqlalchemy import engine_from_config, pool
 # Make sure the project root is importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from hr_agent.database import Base  # noqa: E402
-import hr_agent.models  # noqa: F401, E402 — register all models with Base.metadata
+from hr_agent.core.database import Base  # noqa: E402
+import hr_agent.main  # noqa: F401, E402 — register all models with Base.metadata
 
 config = context.config
 if config.config_file_name is not None:

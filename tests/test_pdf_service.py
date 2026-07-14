@@ -4,7 +4,7 @@ These tests do not need an OpenAI key or a DB — pure unit tests.
 """
 import pytest
 
-from hr_agent.services.pdf_service import PDFExtractionError, _sanitize_text, extract_text
+from hr_agent.core.services.pdf_service import PDFExtractionError, _sanitize_text, extract_text
 
 
 def test_sanitize_text_removes_nul_bytes():

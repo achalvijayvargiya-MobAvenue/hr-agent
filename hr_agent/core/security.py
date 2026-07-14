@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-from hr_agent.config import get_settings
+from hr_agent.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 

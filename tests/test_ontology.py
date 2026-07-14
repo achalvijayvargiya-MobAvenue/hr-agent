@@ -3,9 +3,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from hr_agent.services import ontology_service
-from hr_agent.services.matching_service import ontology_skill_score, passes_hard_filter
-from hr_agent.services.requirement_fit_service import evaluate_requirement_fit
+from hr_agent.modules.taxonomy import ontology_service
+from hr_agent.modules.matching.service import ontology_skill_score, passes_hard_filter
+from hr_agent.modules.matching.requirement_fit_service import evaluate_requirement_fit
 
 
 # ── Education ontology ────────────────────────────────────────────────────────

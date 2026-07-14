@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from hr_agent.services.matching_service import (
+from hr_agent.modules.matching.service import (
     experience_band_score,
     industry_match_score,
     jaccard_skill_score,

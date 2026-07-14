@@ -1,6 +1,6 @@
 """Tests for taxonomy and pool scoring (Phase 1–2)."""
-from hr_agent.services import taxonomy_service
-from hr_agent.services.pool_service import compute_relevance_score, compute_subdomain_match_score
+from hr_agent.modules.taxonomy import taxonomy_service
+from hr_agent.modules.matching.pool_service import compute_relevance_score, compute_subdomain_match_score
 
 
 def test_taxonomy_loads():

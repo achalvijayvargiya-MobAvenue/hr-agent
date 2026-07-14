@@ -13,16 +13,34 @@ from fastapi.responses import JSONResponse
 
 # Logging must be configured before any other hr_agent import so every
 # module-level logger picks up the file + console handlers.
-from hr_agent.config import get_settings
-from hr_agent.logging_config import setup_logging
+from hr_agent.core.config import get_settings
+from hr_agent.core.logging_config import setup_logging
 
 _s = get_settings()
 setup_logging(log_level=_s.log_level, log_file=_s.log_file, backup_count=_s.log_backup_days)
 
-import hr_agent.models  # noqa: F401, E402 — registers all ORM models with Base.metadata
-from hr_agent.api import admin, auth, candidates, jobs, matches, sources, taxonomy, users  # noqa: E402
+from hr_agent.modules.candidates import models as _cm  # noqa: F401
+from hr_agent.modules.jobs import models as _jm  # noqa: F401
+from hr_agent.modules.matching import models as _mm  # noqa: F401
+from hr_agent.modules.users import models as _um  # noqa: F401
+from hr_agent.modules.users import role as _rm  # noqa: F401
+from hr_agent.modules.users import user_role as _urm  # noqa: F401
+from hr_agent.core.models import embedding as _em, processing_log as _pm  # noqa: F401
+from hr_agent.modules.candidates import import_models as _cim  # noqa: F401
+from hr_agent.modules.matching import pool_models as _pm2  # noqa: F401
+import hr_agent.modules.candidates.api as candidates
+import hr_agent.modules.jobs.api as jobs
+import hr_agent.modules.matching.api as matches
+import hr_agent.modules.taxonomy.api as taxonomy
+import hr_agent.modules.users.api as users
+import hr_agent.modules.users.auth as auth
+import hr_agent.modules.users.admin as admin
+import hr_agent.modules.integrations.api as sources
 from hr_agent.core.errors import HRAgentError  # noqa: E402
-from hr_agent.database import init_db  # noqa: E402
+from hr_agent.core.database import init_db  # noqa: E402
+
+import hr_agent.modules.matching.listeners  # noqa: F401
+
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +132,19 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(Exception)
     async def generic_error_handler(request: Request, exc: Exception) -> JSONResponse:
+        from hr_agent.core.circuit_breaker import CircuitBreakerOpenException
+        if isinstance(exc, CircuitBreakerOpenException):
+            logger.warning("Circuit breaker open exception on %s", request.url.path)
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "error": "SERVICE_UNAVAILABLE",
+                    "message": "A downstream service is currently unavailable. Please try again later.",
+                    "status_code": 503,
+                    "path": str(request.url.path),
+                },
+            )
+
         logger.exception("Unhandled exception on %s", request.url.path)
         return JSONResponse(
             status_code=500,

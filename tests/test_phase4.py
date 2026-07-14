@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from hr_agent.services.cross_encoder_service import CrossEncoderService
-from hr_agent.services.profile_fingerprint_service import (
+from hr_agent.modules.matching.cross_encoder_service import CrossEncoderService
+from hr_agent.modules.matching.profile_fingerprint_service import (
     build_candidate_fingerprint,
     build_job_fingerprint,
 )
@@ -98,7 +98,7 @@ def test_cross_encoder_empty_documents():
     assert svc.score_pairs("query", []) == []
 
 
-@patch("hr_agent.services.cross_encoder_service._cross_encoder_model", None)
+@patch("hr_agent.modules.matching.cross_encoder_service._cross_encoder_model", None)
 def test_cross_encoder_normalizes_batch():
     settings = SimpleNamespace(
         cross_encoder_enabled=True,
@@ -116,7 +116,7 @@ def test_cross_encoder_normalizes_batch():
     mock_model.predict.assert_called_once()
 
 
-@patch("hr_agent.services.cross_encoder_service._cross_encoder_model", None)
+@patch("hr_agent.modules.matching.cross_encoder_service._cross_encoder_model", None)
 def test_cross_encoder_identical_scores_return_neutral():
     settings = SimpleNamespace(
         cross_encoder_enabled=True,

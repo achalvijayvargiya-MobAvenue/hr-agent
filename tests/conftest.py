@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from hr_agent.database import Base, get_db
+from hr_agent.core.database import Base, get_db
 from hr_agent.main import app
 
 
@@ -84,7 +84,7 @@ def admin_headers(client, test_db):
     (bypassing the API auth check), then return their Bearer headers.
     """
     from sqlalchemy.orm import sessionmaker as sm
-    from hr_agent.services.auth_service import AuthService
+    from hr_agent.modules.users.service import AuthService
 
     resp = client.post(
         "/api/v1/auth/register",

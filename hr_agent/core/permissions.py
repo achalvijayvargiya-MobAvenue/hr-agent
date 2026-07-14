@@ -9,10 +9,10 @@ from sqlalchemy.orm import Session
 
 from hr_agent.core.errors import ForbiddenError, UnauthorizedError
 from hr_agent.core.security import decode_access_token
-from hr_agent.database import get_db
-from hr_agent.models.role import Role
-from hr_agent.models.user import User
-from hr_agent.models.user_role import UserRole
+from hr_agent.core.database import get_db
+from hr_agent.modules.users.role import Role
+from hr_agent.modules.users.models import User
+from hr_agent.modules.users.user_role import UserRole
 
 logger = logging.getLogger(__name__)
 
