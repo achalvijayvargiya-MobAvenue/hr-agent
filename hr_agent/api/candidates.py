@@ -21,6 +21,7 @@ from hr_agent.api.deps import (
     get_extraction_service,
 )
 from hr_agent.core.errors import NotFoundError
+from hr_agent.services.pdf_service import PDFExtractionError
 from hr_agent.models.candidate import Candidate
 from hr_agent.models.candidate_import import CandidateImport, ImportStatus
 from hr_agent.models.embedding import Embedding
@@ -41,6 +42,7 @@ from hr_agent.services.candidate_service import (
     mark_import_failed,
     normalize_email,
     resolve_import_conflict,
+    apply_extraction_to_candidate,
 )
 from hr_agent.services.domain_classification_service import (
     DomainClassificationError,
@@ -79,6 +81,7 @@ def _candidate_response(candidate: Candidate, status: str) -> CandidateResponse:
         **candidate_domain_dict(candidate),
         source_name=candidate.source_name or "local_kb",
         status=status,
+        has_cv=candidate.has_cv,
         created_at=candidate.created_at,
     )
 
@@ -104,6 +107,7 @@ def _process_import(
     import_id: str,
     extraction_svc: ExtractionService,
     embedding_svc: EmbeddingService,
+    position_id: str | None = None,
 ) -> None:
     """Background task: LLM extraction → duplicate check → create or flag conflict."""
     from hr_agent.database import SessionLocal
@@ -137,7 +141,7 @@ def _process_import(
             db.commit()
             return
 
-        email = normalize_email(extracted.email)
+        email = normalize_email(extracted.email) or normalize_email(import_row.email_hint)
         if email is None:
             logger.error("[BG:CV] No valid email extracted for import %s", import_id)
             if not import_row.name and extracted.candidate_name:
@@ -151,22 +155,22 @@ def _process_import(
 
         existing = db.query(Candidate).filter_by(email=email).first()
         if existing is not None:
-            import_row.status = ImportStatus.CONFLICT
-            import_row.existing_email = email
-            db.commit()
             logger.info(
-                "[BG:CV] Duplicate email detected — import_id=%s email=%s (awaiting user resolution)",
+                "[BG:CV] Duplicate email detected — import_id=%s email=%s. Auto-merging data.",
                 import_id, email,
             )
-            return
-
-        candidate = create_candidate_from_extraction(
-            db,
-            email=email,
-            extracted=extracted,
-            raw_text=raw_text,
-            source_name=import_row.source_name,
-        )
+            existing.raw_text = raw_text
+            existing.source_name = import_row.source_name
+            apply_extraction_to_candidate(existing, extracted)
+            candidate = existing
+        else:
+            candidate = create_candidate_from_extraction(
+                db,
+                email=email,
+                extracted=extracted,
+                raw_text=raw_text,
+                source_name=import_row.source_name,
+            )
         db.flush()
 
         logger.info(
@@ -205,7 +209,7 @@ def _process_import(
             .first()
         )
         try:
-            embedding_svc.generate_and_store(db, "candidate", email, extracted.summary)
+            embedding_svc.generate_and_store(db, "candidate", email, extracted.summary or "")
             embedding_svc.ensure_fingerprint_embedding(
                 db, "candidate", email, build_candidate_fingerprint(candidate)
             )
@@ -213,6 +217,27 @@ def _process_import(
                 log.status = ProcessingStatus.EMBEDDED
             delete_import_row(db, import_row)
             db.commit()
+            
+            if position_id:
+                try:
+                    from hr_agent.models.job import Job
+                    from hr_agent.services.pool_service import PoolService
+                    from hr_agent.models.job_candidate_pool import JobCandidatePool
+                    from datetime import datetime, timezone
+                    
+                    job = db.query(Job).filter_by(id=position_id).first()
+                    if job:
+                        existing_pool_entry = db.query(JobCandidatePool).filter_by(job_id=job.id, candidate_id=candidate.email).first()
+                        if not existing_pool_entry:
+                            pool_svc = PoolService()
+                            row = pool_svc._score_candidate(job, candidate, datetime.now(timezone.utc))
+                            db.add(row)
+                            db.commit()
+                            logger.info("[BG:CV] Candidate %s added to pool for position %s", email, position_id)
+                except Exception as e:
+                    logger.error("[BG:CV] Failed to add candidate %s to pool for %s: %s", email, position_id, e)
+                    db.rollback()
+
             logger.info("[BG:CV] Candidate %s fully processed — status→EMBEDDED  ✓", email)
         except Exception as exc:
             logger.error("[BG:CV] Embedding FAILED for candidate %s: %s", email, exc)
@@ -380,12 +405,20 @@ def dismiss_import(import_id: str, db: Session = Depends(get_db)) -> Response:
 @router.get("", response_model=list[CandidateResponse])
 def list_candidates(
     source_name: str | None = None,
+    job_id: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[CandidateResponse]:
-    """Return all candidates, optionally filtered by source_name."""
+    """Return all candidates, optionally filtered by source_name and/or job_id."""
     query = db.query(Candidate)
+
+    if job_id:
+        from hr_agent.models.job_candidate_pool import JobCandidatePool
+        query = query.join(JobCandidatePool, Candidate.email == JobCandidatePool.candidate_id)
+        query = query.filter(JobCandidatePool.job_id == job_id)
+
     if source_name:
         query = query.filter(Candidate.source_name == source_name)
+
     candidates = query.order_by(Candidate.created_at.desc()).all()
 
     results = []
@@ -509,3 +542,18 @@ def update_candidate_domain(
     )
     status = log.status if log else ProcessingStatus.PENDING
     return _candidate_response(candidate, status)
+
+
+@router.get("/{email}/cv")
+def get_candidate_cv(email: str, db: Session = Depends(get_db)):
+    """Return the candidate's CV as a PDF file."""
+    candidate = db.query(Candidate).filter_by(email=email).first()
+    if not candidate:
+        raise NotFoundError(message=f"Candidate {email!r} not found.")
+    
+    if not candidate.cv_pdf:
+        raise HTTPException(status_code=404, detail="CV PDF not found for this candidate.")
+        
+    return Response(content=candidate.cv_pdf, media_type="application/pdf", headers={
+        "Content-Disposition": f'inline; filename="{candidate.name or email}_CV.pdf"'
+    })

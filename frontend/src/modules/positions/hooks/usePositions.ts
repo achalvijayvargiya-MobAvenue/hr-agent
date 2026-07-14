@@ -19,6 +19,7 @@ export interface Position {
   responsibilities: string[]
   seniority_level: string | null
   summary: string | null
+  salary: string | null
   domain_code: string | null
   domain_label: string | null
   subdomain_codes: string[]
@@ -52,6 +53,7 @@ export interface PositionUpdateBody {
   certifications?: string[]
   responsibilities?: string[]
   summary?: string | null
+  salary?: string | null
   position_status?: string | null
 }
 
@@ -73,6 +75,7 @@ export interface PositionApproveBody {
   certifications?: string[]
   responsibilities?: string[]
   summary?: string | null
+  salary?: string | null
 }
 
 export interface ManualPositionBody {
@@ -90,6 +93,7 @@ export interface ManualPositionBody {
   good_to_have_skills?: string[]
   tools_and_technologies?: string[]
   summary?: string | null
+  salary?: string | null
 }
 
 export function usePositions(status?: string) {
@@ -138,6 +142,19 @@ export function useCreateManualPosition() {
   return useMutation({
     mutationFn: async (body: ManualPositionBody) => {
       const { data } = await api.post<Position>('/jobs/manual', body)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['positions'] })
+    },
+  })
+}
+
+export function useSyncZohoPositions() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post<{ message: string; added: number; updated: number; added_titles: string[]; updated_titles: string[] }>('/jobs/sync-zoho')
       return data
     },
     onSuccess: () => {

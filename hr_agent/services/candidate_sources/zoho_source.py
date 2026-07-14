@@ -9,6 +9,8 @@ from hr_agent.services.pdf_service import extract_text
 logger = logging.getLogger(__name__)
 
 class ZohoCandidateSource(CandidateSource):
+    def __init__(self, db_session_factory=None):
+        self._session_factory = db_session_factory
     @property
     def name(self) -> str:
         return "zoho"
@@ -19,26 +21,40 @@ class ZohoCandidateSource(CandidateSource):
 
     def fetch(self, position_id: str, **kwargs) -> list[CandidateRecord]:
         """
-        Fetch candidates for a specific Zoho Job Opening ID.
-        position_id here is expected to be the Zoho Job Opening ID.
+        Fetch candidates for a specific Job ID.
+        Looks up the Job in the database to find its Zoho Job Opening ID.
         """
+        if not self._session_factory:
+            logger.error("ZohoSource: db_session_factory not configured")
+            return []
+            
+        db = self._session_factory()
+        zoho_id = None
+        try:
+            from hr_agent.models.job import Job
+            job = db.query(Job).filter_by(id=position_id).first()
+            if job and job.zoho_id:
+                zoho_id = job.zoho_id
+        finally:
+            db.close()
+            
+        if not zoho_id:
+            logger.info(f"ZohoSource: Job {position_id} has no zoho_id linked. Skipping Zoho fetch.")
+            return []
+
         client = ZohoRecruitClient()
         records: list[CandidateRecord] = []
         
-        logger.info(f"ZohoSource: Fetching applications for Job {position_id}")
-        applications = client.get_applications_for_job(position_id)
+        logger.info(f"ZohoSource: Fetching applications for Job {position_id} (Zoho ID: {zoho_id})")
+        applications = client.get_applications_for_job(zoho_id)
         
         if not applications:
-            logger.info(f"No applications found for job {position_id}")
+            logger.info(f"No applications found for job {position_id} (Zoho ID: {zoho_id})")
             return []
             
         for app in applications:
-            # The application record usually links to a Candidate
-            candidate_dict = app.get("Candidate")
-            if not candidate_dict:
-                continue
-                
-            candidate_id = candidate_dict.get("id")
+            # Get candidate ID from application record
+            candidate_id = app.get("$Candidate_Id")
             if not candidate_id:
                 continue
                 
@@ -50,6 +66,7 @@ class ZohoCandidateSource(CandidateSource):
             # Check for attachments (CV)
             attachments = client.get_candidate_attachments(candidate_id)
             raw_text = ""
+            pdf_bytes = None
             
             if attachments:
                 # Get the first attachment (usually the resume)
@@ -59,30 +76,27 @@ class ZohoCandidateSource(CandidateSource):
                 if att_id and file_name.lower().endswith(".pdf"):
                     pdf_bytes = client.download_attachment(candidate_id, att_id)
                     if pdf_bytes:
-                        # Write to temp file to use pdf_service
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                            tmp.write(pdf_bytes)
-                            tmp_path = tmp.name
-                            
                         try:
-                            raw_text = extract_text(tmp_path)
+                            raw_text = extract_text(pdf_bytes)
                         except Exception as e:
                             logger.error(f"Failed to extract text from {file_name}: {e}")
-                        finally:
-                            if os.path.exists(tmp_path):
-                                os.remove(tmp_path)
             
-            # Fallback to plain text details if no PDF text extracted
-            if len(raw_text.strip()) < 50:
-                logger.info(f"Using fallback text for candidate {candidate_id}")
-                raw_text = (
-                    f"Name: {details.get('First_Name', '')} {details.get('Last_Name', '')}\n"
-                    f"Email: {details.get('Email', '')}\n"
-                    f"Experience: {details.get('Experience_in_Years', '')}\n"
-                    f"Skills: {details.get('Skill_Set', '')}\n"
-                    f"Current Title: {details.get('Current_Job_Title', '')}\n"
-                    f"Current Employer: {details.get('Current_Employer', '')}\n"
-                )
+            # Always append the Zoho metadata to the raw text to ensure we don't miss anything
+            metadata_text = (
+                f"\\n\\n--- ZOHO PROFILE METADATA ---\\n"
+                f"Name: {details.get('First_Name', '')} {details.get('Last_Name', '')}\\n"
+                f"Email: {details.get('Email', '')}\\n"
+                f"Phone: {details.get('Phone', '')} {details.get('Mobile', '')}\\n"
+                f"Location: {details.get('City', '')} {details.get('State', '')} {details.get('Country', '')}\\n"
+                f"Experience: {details.get('Experience_in_Years', '')}\\n"
+                f"Skills: {details.get('Skill_Set', '')}\\n"
+                f"Current Title: {details.get('Current_Job_Title', '')}\\n"
+                f"Current Employer: {details.get('Current_Employer', '')}\\n"
+                f"Expected Salary: {details.get('Expected_Salary', '')}\\n"
+                f"Current Salary: {details.get('Current_Salary', '')}\\n"
+                f"Educational Details: {details.get('Educational_Details', '')}\\n"
+            )
+            raw_text = raw_text + metadata_text
 
             record = CandidateRecord(
                 source_name=self.name,
@@ -95,7 +109,8 @@ class ZohoCandidateSource(CandidateSource):
                     "zoho_candidate_id": candidate_id,
                     "zoho_application_id": app.get("id"),
                     "zoho_job_id": position_id,
-                    "status": app.get("Application_Status")
+                    "status": app.get("Application_Status"),
+                    "cv_pdf": pdf_bytes if attachments and pdf_bytes else None
                 }
             )
             records.append(record)

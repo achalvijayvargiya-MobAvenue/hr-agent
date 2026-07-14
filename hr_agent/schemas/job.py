@@ -55,6 +55,7 @@ class JobResponse(BaseModel):
     tools_and_technologies: list[str]
     seniority_level: str | None
     summary: str | None
+    salary: str | None = None
     domain_code: str | None = None
     domain_label: str | None = None
     subdomain_codes: list[str] = Field(default_factory=list)
@@ -115,6 +116,7 @@ class PositionManualCreate(BaseModel):
     certifications: list[str] = Field(default_factory=list)
     responsibilities: list[str] = Field(default_factory=list)
     summary: str | None = None
+    salary: str | None = None
 
 
 class PositionApprove(BaseModel):
@@ -135,6 +137,7 @@ class PositionApprove(BaseModel):
     certifications: list[str] | None = None
     responsibilities: list[str] | None = None
     summary: str | None = None
+    salary: str | None = None
     hard_checks: dict | None = None
 
 
@@ -156,6 +159,7 @@ class PositionUpdate(BaseModel):
     certifications: list[str] | None = None
     responsibilities: list[str] | None = None
     summary: str | None = None
+    salary: str | None = None
     hard_checks: dict | None = None
     position_status: str | None = None
 

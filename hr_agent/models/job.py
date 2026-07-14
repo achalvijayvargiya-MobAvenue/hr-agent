@@ -22,6 +22,7 @@ class Job(Base):
     department: Mapped[str | None] = mapped_column(String, nullable=True)
     industry: Mapped[str | None] = mapped_column(String, nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    salary: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # New fields from updated jd_extraction.txt prompt
     employment_type: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -48,6 +49,9 @@ class Job(Base):
     candidates_required: Mapped[int | None] = mapped_column(Integer, nullable=True)
     position_status: Mapped[str] = mapped_column(String, nullable=False, default="DRAFT")
     created_by: Mapped[str | None] = mapped_column(String, ForeignKey("users.id"), nullable=True)
+
+    zoho_id: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
+    zoho_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

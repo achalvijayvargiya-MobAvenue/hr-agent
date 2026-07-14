@@ -138,6 +138,7 @@ def create_app() -> FastAPI:
     app.include_router(candidates.router, prefix="/api/v1")
     app.include_router(taxonomy.router, prefix="/api/v1")
     app.include_router(matches.router, prefix="/api/v1")
+
     app.include_router(admin.router, prefix="/api/v1")
     app.include_router(users.router, prefix="/api/v1")
     app.include_router(users.roles_router, prefix="/api/v1")

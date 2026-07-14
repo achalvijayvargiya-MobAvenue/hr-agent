@@ -98,7 +98,7 @@ def get_source_registry() -> SourceRegistry:
     source_registry.register(github)
     
     from hr_agent.services.candidate_sources.zoho_source import ZohoCandidateSource
-    zoho = ZohoCandidateSource()
+    zoho = ZohoCandidateSource(db_session_factory=SessionLocal)
     source_registry.register(zoho)
 
     return source_registry

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, JSON, String, Text, func
+from sqlalchemy import DateTime, Float, JSON, LargeBinary, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from hr_agent.database import Base
@@ -43,9 +43,14 @@ class Candidate(Base):
     source_name: Mapped[str] = mapped_column(String, nullable=False, default="local_kb")
 
     raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cv_pdf: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )
+
+    @property
+    def has_cv(self) -> bool:
+        return self.cv_pdf is not None
 
     def __repr__(self) -> str:
         return f"<Candidate email={self.email!r} name={self.name!r}>"

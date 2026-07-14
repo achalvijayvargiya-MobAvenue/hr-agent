@@ -82,6 +82,7 @@ def _job_to_response(job: Job, db: Session) -> JobResponse:
         department=job.department,
         industry=job.industry,
         summary=job.summary,
+        salary=job.salary,
         **job_domain_dict(job),
         hard_checks=job.hard_checks,
         candidates_required=job.candidates_required,
@@ -162,6 +163,8 @@ def _apply_position_fields(job: Job, body: PositionApprove | PositionUpdate) -> 
         job.responsibilities = body.responsibilities
     if body.summary is not None:
         job.summary = body.summary
+    if body.salary is not None:
+        job.salary = body.salary
     if body.hard_checks is not None:
         job.hard_checks = body.hard_checks
     if isinstance(body, PositionUpdate) and body.position_status is not None:
@@ -211,22 +214,22 @@ def _process_job(
             logger.error("[BG:JOB] Job %s not found in DB during background task.", job_id)
             return
 
-        job.title = extracted.title
-        job.normalized_role = extracted.normalized_role
-        job.experience_min = extracted.experience_min
-        job.experience_max = extracted.experience_max
-        job.employment_type = extracted.employment_type
-        job.location = extracted.location
-        job.must_have_skills = extracted.must_have_skills
-        job.good_to_have_skills = extracted.good_to_have_skills
-        job.education_requirements = extracted.education_requirements
-        job.certifications = extracted.certifications
-        job.responsibilities = extracted.responsibilities
-        job.tools_and_technologies = extracted.tools_and_technologies
-        job.seniority_level = extracted.seniority_level
-        job.department = extracted.department
-        job.industry = extracted.industry
-        job.summary = extracted.summary
+        job.title = extracted.title or job.title
+        job.normalized_role = extracted.normalized_role or job.normalized_role
+        job.experience_min = extracted.experience_min if extracted.experience_min is not None else job.experience_min
+        job.experience_max = extracted.experience_max if extracted.experience_max is not None else job.experience_max
+        job.employment_type = extracted.employment_type or job.employment_type
+        job.location = extracted.location or job.location
+        job.must_have_skills = extracted.must_have_skills if extracted.must_have_skills else job.must_have_skills
+        job.good_to_have_skills = extracted.good_to_have_skills if extracted.good_to_have_skills else job.good_to_have_skills
+        job.education_requirements = extracted.education_requirements if extracted.education_requirements else job.education_requirements
+        job.certifications = extracted.certifications if extracted.certifications else job.certifications
+        job.responsibilities = extracted.responsibilities if extracted.responsibilities else job.responsibilities
+        job.tools_and_technologies = extracted.tools_and_technologies if extracted.tools_and_technologies else job.tools_and_technologies
+        job.seniority_level = extracted.seniority_level or job.seniority_level
+        job.department = extracted.department or job.department
+        job.industry = extracted.industry or job.industry
+        job.summary = extracted.summary or job.summary
 
         # ── Step 1b: Domain classification ───────────────────────────────────
         logger.info("[BG:JOB] Step 1b — Domain classification for job %s", job_id)
@@ -289,6 +292,71 @@ def _process_job(
         db.close()
         logger.info("[BG:JOB] Background task finished for job %s.", job_id)
 
+def _process_manual_job(
+    job_id: str,
+    embedding_svc: EmbeddingService,
+) -> None:
+    """
+    Background task for manually created positions: Domain classification → Embedding.
+    """
+    from hr_agent.database import SessionLocal
+
+    logger.info("[BG:JOB] Manual processing started — job_id: %s", job_id)
+    db = SessionLocal()
+    try:
+        log = db.query(ProcessingLog).filter_by(entity_id=job_id, entity_type="job").first()
+        job = db.query(Job).filter_by(id=job_id).first()
+        if not job:
+            return
+
+        # ── Step 1b: Domain classification ───────────────────────────────────
+        logger.info("[BG:JOB] Step 1b — Domain classification for manual job %s", job_id)
+        try:
+            from hr_agent.api.deps import get_domain_classification_service
+
+            domain_svc = get_domain_classification_service()
+            classification = domain_svc.classify_job(
+                title=job.title,
+                normalized_role=job.normalized_role,
+                seniority_level=job.seniority_level,
+                department=job.department,
+                industry=job.industry,
+                skills=(job.must_have_skills or []) + (job.good_to_have_skills or []),
+                tools=job.tools_and_technologies,
+                responsibilities=job.responsibilities,
+                education=job.education_requirements,
+                summary=job.summary,
+            )
+            from hr_agent.services.domain_classification_service import apply_domain_to_job
+            apply_domain_to_job(job, classification)
+        except Exception as exc:
+            logger.warning("[BG:JOB] Domain classification failed for manual job %s: %s", job_id, exc)
+
+        # ── Step 2: Embedding ──────────────────────────────────────────────
+        logger.info("[BG:JOB] Step 2/2 — Generating embedding for manual job %s", job_id)
+        try:
+            embedding_svc.generate_and_store(db, "job", job_id, job.summary or job.title or "")
+            from hr_agent.services.profile_fingerprint_service import build_job_fingerprint
+            embedding_svc.ensure_fingerprint_embedding(
+                db, "job", job_id, build_job_fingerprint(job)
+            )
+            if log:
+                log.status = ProcessingStatus.EMBEDDED
+            db.commit()
+            logger.info(
+                "[BG:JOB] Manual job %s fully processed — status→EMBEDDED  ✓", job_id
+            )
+        except Exception as exc:
+            logger.error("[BG:JOB] Embedding FAILED for manual job %s: %s", job_id, exc)
+            if log:
+                log.status = ProcessingStatus.FAILED
+                log.error_message = f"Embedding error: {exc}"
+                db.commit()
+
+    finally:
+        db.close()
+        logger.info("[BG:JOB] Manual background task finished for job %s.", job_id)
+
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
@@ -349,8 +417,10 @@ async def upload_job(
 @router.post("/manual", response_model=JobResponse, status_code=201)
 def create_manual_position(
     body: PositionManualCreate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    embedding_svc: EmbeddingService = Depends(get_embedding_service),
 ) -> JobResponse:
     """
     Create a new Open Position by filling in fields manually.
@@ -372,9 +442,10 @@ def create_manual_position(
         good_to_have_skills=body.good_to_have_skills or [],
         tools_and_technologies=body.tools_and_technologies or [],
         education_requirements=body.education_requirements or [],
-        certifications=body.certifications or [],
-        responsibilities=body.responsibilities or [],
+        certifications=body.certifications,
+        responsibilities=body.responsibilities,
         summary=body.summary,
+        salary=body.salary,
         position_status="DRAFT",
         created_by=current_user.id,
     )
@@ -390,12 +461,202 @@ def create_manual_position(
     db.commit()
     db.refresh(job)
 
+    background_tasks.add_task(_process_manual_job, job.id, embedding_svc)
+
     logger.info(
         "[API:JOB] Manual position created — job_id=%s  title=%r  created_by=%s",
         job.id, job.title, current_user.id,
     )
 
     return _job_to_response(job, db)
+
+
+@router.post("/sync-zoho", response_model=dict, status_code=200)
+def sync_zoho_jobs(
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    extraction_svc: ExtractionService = Depends(get_extraction_service),
+    embedding_svc: EmbeddingService = Depends(get_embedding_service),
+):
+    """Fetch active jobs from Zoho Recruit, map to DB, and trigger AI extraction."""
+    from hr_agent.services.zoho.client import ZohoRecruitClient
+    zoho = ZohoRecruitClient()
+    jobs = zoho.get_active_jobs()
+    
+    added_count = 0
+    updated_count = 0
+    added_titles = []
+    updated_titles = []
+    
+    for zjob in jobs:
+        zoho_id = zjob.get("id")
+        title = zjob.get("Posting_Title")
+        
+        if not zoho_id or not title:
+            continue
+            
+        exp = zjob.get("Work_Experience_in_years") or zjob.get("Work_Experience")
+        exp_min, exp_max = None, None
+        if exp and isinstance(exp, str):
+            parts = exp.split("-")
+            if len(parts) == 2:
+                try:
+                    exp_min = int(parts[0].strip())
+                    exp_max = int(parts[1].strip().split()[0])
+                except ValueError:
+                    pass
+            elif exp.isdigit():
+                exp_min = int(exp)
+        elif exp and isinstance(exp, int):
+            exp_min = exp
+            
+        status = zjob.get("Job_Opening_Status")
+        pos_status = "OPEN"
+        if status:
+            if "closed" in status.lower() or "filled" in status.lower() or "cancelled" in status.lower():
+                pos_status = "CLOSED"
+            elif "draft" in status.lower():
+                pos_status = "DRAFT"
+        
+        candidates_req = None
+        try:
+            if zjob.get("Number_of_Positions"):
+                candidates_req = int(zjob.get("Number_of_Positions"))
+        except (ValueError, TypeError):
+            pass
+            
+        raw_text_parts = [
+            f"Title: {title}",
+            f"Department: {zjob.get('Department', '')}",
+            f"Location: {zjob.get('City', '')} {zjob.get('State', '')}",
+            f"Type: {zjob.get('Job_Type', '')}",
+            f"Experience: {exp}",
+            f"Description:\n{zjob.get('Job_Description', '')}"
+        ]
+        full_text = "\n".join(p for p in raw_text_parts if p.strip())
+        
+        # Normalize employment type
+        emp_type = zjob.get("Job_Type")
+        if emp_type:
+            emp_type_lower = emp_type.lower()
+            if "full" in emp_type_lower and "time" in emp_type_lower:
+                emp_type = "Full-time"
+            elif "part" in emp_type_lower and "time" in emp_type_lower:
+                emp_type = "Part-time"
+                
+        loc = zjob.get("City") or zjob.get("State")
+        if zjob.get("City") and zjob.get("State"):
+            loc = f"{zjob.get('City')}, {zjob.get('State')}"
+
+        existing = db.query(Job).filter_by(zoho_id=zoho_id).first()
+        if existing:
+            def norm(v):
+                return str(v).strip() if v is not None else ""
+                
+            old_zjob = existing.zoho_data or {}
+            changed = False
+            desc_changed = norm(old_zjob.get("Job_Description")) != norm(zjob.get("Job_Description"))
+            
+            if norm(old_zjob.get("Posting_Title")) != norm(title):
+                existing.title = title
+                changed = True
+                
+            if norm(old_zjob.get("Department")) != norm(zjob.get("Department")):
+                existing.department = zjob.get("Department")
+                changed = True
+                
+            if norm(old_zjob.get("Industry")) != norm(zjob.get("Industry")):
+                existing.industry = zjob.get("Industry")
+                changed = True
+                
+            if norm(old_zjob.get("City")) != norm(zjob.get("City")) or norm(old_zjob.get("State")) != norm(zjob.get("State")):
+                existing.location = loc
+                changed = True
+                
+            if norm(old_zjob.get("Job_Type")) != norm(zjob.get("Job_Type")):
+                existing.employment_type = emp_type
+                changed = True
+                
+            old_exp = old_zjob.get("Work_Experience_in_years") or old_zjob.get("Work_Experience")
+            new_exp = zjob.get("Work_Experience_in_years") or zjob.get("Work_Experience")
+            if norm(old_exp) != norm(new_exp):
+                existing.experience_min = exp_min
+                existing.experience_max = exp_max
+                changed = True
+                
+            if norm(old_zjob.get("Number_of_Positions")) != norm(zjob.get("Number_of_Positions")):
+                existing.candidates_required = candidates_req
+                changed = True
+                
+            if desc_changed:
+                existing.summary = zjob.get("Job_Description")
+                existing.raw_text = full_text
+                changed = True
+                
+            if norm(old_zjob.get("Salary")) != norm(zjob.get("Salary")):
+                existing.salary = str(zjob.get("Salary")) if zjob.get("Salary") else None
+                changed = True
+                
+            if norm(old_zjob.get("Job_Opening_Status")) != norm(zjob.get("Job_Opening_Status")):
+                existing.position_status = pos_status
+                changed = True
+
+            if changed:
+                existing.zoho_data = zjob
+                db.commit()
+                db.refresh(existing)
+                
+                if desc_changed and existing.raw_text:
+                    background_tasks.add_task(_process_job, existing.id, existing.raw_text, extraction_svc, embedding_svc)
+                    
+                updated_count += 1
+                updated_titles.append(title)
+                
+            continue
+
+        new_job = Job(
+            title=title,
+            department=zjob.get("Department"),
+            industry=zjob.get("Industry"),
+            location=loc,
+            employment_type=emp_type,
+            experience_min=exp_min,
+            experience_max=exp_max,
+            candidates_required=candidates_req,
+            summary=zjob.get("Job_Description"),
+            salary=str(zjob.get("Salary")) if zjob.get("Salary") else None,
+            position_status=pos_status,
+            created_by=current_user.id,
+            zoho_id=zoho_id,
+            zoho_data=zjob,
+            raw_text=full_text,
+        )
+        db.add(new_job)
+        db.flush()
+        
+        log = ProcessingLog(
+            entity_type="job",
+            entity_id=new_job.id,
+            status=ProcessingStatus.EXTRACTED,
+        )
+        db.add(log)
+        db.commit()
+        db.refresh(new_job)
+        
+        if new_job.raw_text:
+            background_tasks.add_task(_process_job, new_job.id, new_job.raw_text, extraction_svc, embedding_svc)
+        
+        added_count += 1
+        added_titles.append(title)
+        
+    return {
+        "message": f"Successfully synced jobs from Zoho",
+        "added": added_count,
+        "updated": updated_count,
+        "added_titles": added_titles,
+        "updated_titles": updated_titles
+    }
 
 
 @router.get("", response_model=list[JobResponse])

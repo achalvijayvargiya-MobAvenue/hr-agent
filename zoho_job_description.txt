@@ -1,0 +1,100 @@
+Title: Manager - Finance (Taxation)
+
+--- EXACT ZOHO DESCRIPTION ---
+Key Responsibilities:  Preparation and filing of Income Tax returns, TDS returns, and other statutory returns.  Ensure compliance with provisions of the Income Tax Act, GST laws, and other applicable regulations.  Monthly review of TDS deductions, GST reconciliation's, and tax payments.  Handling notices, assessments, scrutiny proceedings, and correspondence with tax authorities.  Preparation of tax workings, advance tax computations, and tax provisioning.  Coordination with tax consultants and auditors for timely closure of assessments and audits.  Monitoring tax updates and assessing their impact on the business.  Support management reporting and MIS preparation.  Preparation of detailed cost sheet.  Reconciliation of vendors Skills Required  Strong knowledge of Income Tax, TDS, GST, and corporate taxation.  Good understanding of accounting standards and financial reporting.  Proficiency in MS Excel and ERP systems.  Strong analytical and problem-solving skills.  Excellent communication and stakeholder management abilities.  Ability to work independently and manage multiple deadlines. Preferred Attributes  Detail-oriented with a compliance-focused approach.  Ability to handle assessments and tax litigations independently. Requirements Qualified CA 2+ years of relevant experience in direct and indirect taxation, financial reporting, and compliance. Exposure to ERP systems such as Zoho, Tally, or similar platforms will be preferred. Benefits  Opportunity to shape the people strategy of a fast-growing AdTech company.  Work closely with founders and senior leadership on strategic business initiatives.  Build and scale high-performing teams in a dynamic, innovation-driven environment.  Lead transformational HR initiatives with a significant organizational impact.
+------------------------------
+
+--- ALL RAW ZOHO FIELDS ---
+{
+  "$currency_symbol": "\u20b9",
+  "Posting_Title": "Manager - Finance (Taxation)",
+  "Account_Manager": {
+    "name": "Hiren Narwani",
+    "id": "86740000001190001"
+  },
+  "Target_Date": "2026-07-31",
+  "Required_Skills": null,
+  "Last_Activity_Time": "2026-07-09T16:33:46+05:30",
+  "Industry": "Adtech",
+  "$state": "save",
+  "$process_flow": false,
+  "Exchange_Rate": 1,
+  "Currency": "INR",
+  "Zip_Code": "400066",
+  "id": "86740000001923003",
+  "Department_Name": {
+    "name": "Finance",
+    "id": "86740000001162005"
+  },
+  "$approved": true,
+  "Date_Opened": "2026-07-09",
+  "$approval": {
+    "delegate": false,
+    "approve": false,
+    "reject": false,
+    "resubmit": false
+  },
+  "Remote_Job": false,
+  "Created_Time": "2026-07-09T16:30:09+05:30",
+  "$followed": false,
+  "Office_Address_2": "Western Edge 2, Mobavenue, First Floor, B-WING, B-111, Borivali East, Mumbai, Maharashtra 400066",
+  "$editable": true,
+  "Is_Locked": false,
+  "City": "Mumbai",
+  "Job_Opening_Status": "In-progress",
+  "Associated_Tags": [],
+  "Assigned_Recruiter": [
+    {
+      "name": "Hiren Narwani",
+      "id": "86740000001190001",
+      "email": "hiren.narwani@mobavenue.com",
+      "photoSrc": "https://contacts.zoho.in/file?ID=60062538677&fs=thumb"
+    }
+  ],
+  "Work_Experience": "2+ years",
+  "Job_Type": "Full time",
+  "Job_Opening_Name": "Manager - Finance (Taxation)",
+  "Number_of_Positions": "1",
+  "State": "Maharashtra",
+  "Internal_Referral__s": false,
+  "Country": "India",
+  "Created_By": {
+    "name": "Hiren Narwani",
+    "id": "86740000001190001"
+  },
+  "Is_Attachment_Present": true,
+  "Office_City": "Mumbai",
+  "Keep_on_Career_Site": false,
+  "Salary": "18 - 21 LPA",
+  "Assigned_Recruiters": [
+    {
+      "name": "Hiren Narwani",
+      "id": "86740000001190001",
+      "email": "hiren.narwani@mobavenue.com",
+      "photoSrc": "https://contacts.zoho.in/file?ID=60062538677&fs=thumb"
+    }
+  ],
+  "Date_Closed": null,
+  "Pin_Code": "400066",
+  "No_of_Candidates_Hired": 0,
+  "Modified_By": {
+    "name": "Hiren Narwani",
+    "id": "86740000001190001"
+  },
+  "Is_Hot_Job_Opening": false,
+  "Internal_Apply__s": false,
+  "Office_State": "Maharashtra",
+  "Publish": true,
+  "Designation": "Manager - Finance",
+  "Modified_Time": "2026-07-09T16:40:14+05:30",
+  "No_of_Candidates_Associated": 2,
+  "Job_Opening_ID": "ZR_45_JOB",
+  "Job_Description": "Key Responsibilities: \uf0b7 Preparation and filing of Income Tax returns, TDS returns, and other statutory returns. \uf0b7 Ensure compliance with provisions of the Income Tax Act, GST laws, and other applicable regulations. \uf0b7 Monthly review of TDS deductions, GST reconciliation's, and tax payments. \uf0b7 Handling notices, assessments, scrutiny proceedings, and correspondence with tax authorities. \uf0b7 Preparation of tax workings, advance tax computations, and tax provisioning. \uf0b7 Coordination with tax consultants and auditors for timely closure of assessments and audits. \uf0b7 Monitoring tax updates and assessing their impact on the business. \uf0b7 Support management reporting and MIS preparation. \uf0b7 Preparation of detailed cost sheet. \uf0b7 Reconciliation of vendors Skills Required \uf0b7 Strong knowledge of Income Tax, TDS, GST, and corporate taxation. \uf0b7 Good understanding of accounting standards and financial reporting. \uf0b7 Proficiency in MS Excel and ERP systems. \uf0b7 Strong analytical and problem-solving skills. \uf0b7 Excellent communication and stakeholder management abilities. \uf0b7 Ability to work independently and manage multiple deadlines. Preferred Attributes \uf0b7 Detail-oriented with a compliance-focused approach. \uf0b7 Ability to handle assessments and tax litigations independently. Requirements Qualified CA 2+ years of relevant experience in direct and indirect taxation, financial reporting, and compliance. Exposure to ERP systems such as Zoho, Tally, or similar platforms will be preferred. Benefits \uf0b7 Opportunity to shape the people strategy of a fast-growing AdTech company. \uf0b7 Work closely with founders and senior leadership on strategic business initiatives. \uf0b7 Build and scale high-performing teams in a dynamic, innovation-driven environment. \uf0b7 Lead transformational HR initiatives with a significant organizational impact.",
+  "$internal_publish_url": null,
+  "Pipeline__s": "Standard Pipeline",
+  "$approval_state": "approved",
+  "Location": {
+    "name": "Mumbai",
+    "id": "86740000001560584"
+  }
+}

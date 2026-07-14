@@ -93,6 +93,7 @@ def fetch_candidates_for_position(
             import_row.id,
             extraction_svc,
             embedding_svc,
+            position_id=position_id,
         )
         new_count += 1
 

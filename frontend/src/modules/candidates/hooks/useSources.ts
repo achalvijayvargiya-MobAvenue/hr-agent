@@ -42,6 +42,7 @@ export interface Candidate {
   summary: string | null
   source_name: string
   status: string
+  has_cv: boolean
   created_at: string
 }
 
@@ -109,11 +110,13 @@ export function useFetchCandidates() {
   })
 }
 
-export function useCandidates(sourceName?: string) {
+export function useCandidates(sourceName?: string, jobId?: string) {
   return useQuery<Candidate[]>({
-    queryKey: ['candidates', sourceName],
+    queryKey: ['candidates', sourceName, jobId],
     queryFn: async () => {
-      const params = sourceName ? { source_name: sourceName } : {}
+      const params: Record<string, string> = {}
+      if (sourceName) params.source_name = sourceName
+      if (jobId) params.job_id = jobId
       const { data } = await api.get<Candidate[]>('/candidates', { params })
       return data
     },

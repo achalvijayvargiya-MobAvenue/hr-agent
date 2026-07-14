@@ -10,9 +10,11 @@ import {
   useCandidateImports,
   useResolveConflict,
   useDismissImport,
+  useFetchCandidates,
   type CandidateConflict,
   type CandidateImport,
 } from './hooks/useSources'
+import { usePositions } from '../positions/hooks/usePositions'
 
 const SOURCE_STYLES: Record<string, string> = {
   local_kb: 'bg-blue-100 text-blue-800',
@@ -130,11 +132,16 @@ export default function CandidatesPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data: sources = [] } = useSources()
+  const { data: positions = [] } = usePositions()
 
   const [sourceFilter, setSourceFilter] = useState('')
+  const [jobFilter, setJobFilter] = useState('')
   const [nameSearch, setNameSearch] = useState('')
 
-  const { data: candidates = [], isLoading, isError } = useCandidates(sourceFilter || undefined)
+  const { data: candidates = [], isLoading, isError } = useCandidates(
+    sourceFilter || undefined,
+    jobFilter || undefined
+  )
   const { data: conflicts = [] } = useCandidateConflicts()
   const { data: imports = [] } = useCandidateImports()
   const deleteCandidate = useDeleteCandidate()
@@ -143,6 +150,44 @@ export default function CandidatesPage() {
 
   const processingCount = imports.filter((i) => i.status === 'PROCESSING').length
   const failedImports = imports.filter((i) => i.status === 'FAILED')
+
+  const fetchCandidates = useFetchCandidates()
+  const [isFetchModalOpen, setIsFetchModalOpen] = useState(false)
+  const [selectedPositionsForFetch, setSelectedPositionsForFetch] = useState<Set<string>>(new Set())
+
+  function handleFetchClick() {
+    setIsFetchModalOpen(true)
+  }
+
+  async function handleFetchSubmit() {
+    if (selectedPositionsForFetch.size === 0) {
+      alert("Please select at least one position.")
+      return
+    }
+    const promises = Array.from(selectedPositionsForFetch).map(id => fetchCandidates.mutateAsync(id))
+    try {
+      await Promise.all(promises)
+      alert("Candidates fetch triggered successfully for selected positions.")
+      setIsFetchModalOpen(false)
+    } catch (err) {
+      alert("Error triggering fetch for some positions.")
+    }
+  }
+
+  function handleSelectAllPositions(checked: boolean) {
+    if (checked) {
+      setSelectedPositionsForFetch(new Set(positions.map(p => p.id)))
+    } else {
+      setSelectedPositionsForFetch(new Set())
+    }
+  }
+
+  function handleSelectPosition(id: string, checked: boolean) {
+    const newSet = new Set(selectedPositionsForFetch)
+    if (checked) newSet.add(id)
+    else newSet.delete(id)
+    setSelectedPositionsForFetch(newSet)
+  }
 
   function handleDelete(e: React.MouseEvent, email: string, candidateName: string | null) {
     e.stopPropagation()
@@ -234,13 +279,6 @@ export default function CandidatesPage() {
             className="hidden"
             onChange={handleFileChange}
           />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-          >
-            {uploading ? 'Uploading…' : 'Upload CV'}
-          </button>
         </div>
         <span className="text-sm text-gray-400">{filtered.length} candidate{filtered.length !== 1 ? 's' : ''}</span>
       </div>
@@ -304,17 +342,48 @@ export default function CandidatesPage() {
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <select
-          value={sourceFilter}
-          onChange={(e) => setSourceFilter(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          value={jobFilter}
+          onChange={(e) => setJobFilter(e.target.value)}
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48 truncate"
         >
-          <option value="">All sources</option>
-          {sources.map((s) => (
-            <option key={s.name} value={s.name}>
-              {s.display_name}
+          <option value="">All positions</option>
+          {Array.from(
+            new Map(
+              positions
+                .filter((p) => p.title && p.title.trim() !== '' && p.title !== 'None' && p.title !== 'Unknown Title')
+                .map((p) => [p.title!.trim(), p])
+            ).values()
+          ).map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.title}
             </option>
           ))}
         </select>
+        <select
+          value={sourceFilter}
+          onChange={(e) => setSourceFilter(e.target.value)}
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-40"
+        >
+          <option value="">All sources</option>
+          {sources.map((src) => (
+            <option key={src.name} value={src.name}>
+              {src.name.replace(/_/g, ' ')}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={handleFetchClick}
+          className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+        >
+          Fetch Candidates
+        </button>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+        >
+          {uploading ? 'Uploading…' : 'Upload CV'}
+        </button>
       </div>
 
       {isLoading && <p className="text-gray-500 text-sm">Loading candidates…</p>}
@@ -381,6 +450,58 @@ export default function CandidatesPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {isFetchModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Fetch Candidates</h2>
+            <p className="text-sm text-gray-600 mb-4">Select the job positions to fetch candidates for.</p>
+            
+            <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-2 mb-6">
+              <label className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer border-b border-gray-100">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                  checked={positions.length > 0 && selectedPositionsForFetch.size === positions.length}
+                  onChange={(e) => handleSelectAllPositions(e.target.checked)}
+                />
+                <span className="text-sm font-medium text-gray-900">Select All</span>
+              </label>
+              
+              {positions.map((p) => (
+                <label key={p.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                    checked={selectedPositionsForFetch.has(p.id)}
+                    onChange={(e) => handleSelectPosition(p.id, e.target.checked)}
+                  />
+                  <span className="text-sm text-gray-700">{p.title}</span>
+                </label>
+              ))}
+              {positions.length === 0 && (
+                <p className="text-sm text-gray-500 p-2">No positions available.</p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setIsFetchModalOpen(false)}
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleFetchSubmit}
+                disabled={selectedPositionsForFetch.size === 0 || fetchCandidates.isPending}
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {fetchCandidates.isPending ? 'Fetching...' : 'Fetch'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

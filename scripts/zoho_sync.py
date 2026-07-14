@@ -2,6 +2,7 @@ import logging
 import asyncio
 import sys
 import os
+import re
 from datetime import datetime, timezone
 
 # Add the project root to the Python path so we can import hr_agent
@@ -50,6 +51,15 @@ async def sync_zoho():
                 department = str(department_raw) if department_raw else ""
                 
             employment_type = z_job.get("Job_Type", "")
+            # Normalize Employment Type
+            employment_type = z_job.get("Job_Type")
+            if employment_type:
+                # Zoho often uses "Full time" instead of "Full-time"
+                emp_lower = employment_type.lower().replace("-", " ")
+                if emp_lower == "full time":
+                    employment_type = "Full-time"
+                elif emp_lower == "part time":
+                    employment_type = "Part-time"
             
             # Combine location
             city = z_job.get("City", "")
@@ -62,19 +72,23 @@ async def sync_zoho():
             experience_str = str(z_job.get("Work_Experience", ""))
             exp_min = None
             exp_max = None
-            if experience_str and "-" in experience_str:
-                parts = experience_str.split("-")
+            if experience_str:
+                nums = re.findall(r'\d+', experience_str)
+                if len(nums) >= 2:
+                    exp_min = int(nums[0])
+                    exp_max = int(nums[1])
+                elif len(nums) == 1:
+                    exp_min = int(nums[0])
+                    
+            # Extract Candidates Required
+            candidates_required = None
+            num_positions = z_job.get("Number_of_Positions")
+            if num_positions:
                 try:
-                    exp_min = int(parts[0].strip().split()[0])
-                    exp_max = int(parts[1].strip().split()[0])
-                except Exception:
+                    candidates_required = int(num_positions)
+                except ValueError:
                     pass
-            elif experience_str:
-                try:
-                    exp_min = int(experience_str.strip().split()[0])
-                except Exception:
-                    pass
-            
+                    
             # Combine description and requirements for raw_text
             reqs = z_job.get("Required_Skills", "")
             full_text = f"{desc}\n\nRequirements:\n{reqs}"
@@ -94,6 +108,7 @@ async def sync_zoho():
                     location=location,
                     experience_min=exp_min,
                     experience_max=exp_max,
+                    candidates_required=candidates_required,
                     position_status="OPEN",
                     created_at=datetime.now(timezone.utc)
                 )
@@ -108,30 +123,81 @@ async def sync_zoho():
                 if location: db_job.location = location
                 if exp_min is not None: db_job.experience_min = exp_min
                 if exp_max is not None: db_job.experience_max = exp_max
+                if candidates_required is not None: db_job.candidates_required = candidates_required
                 db_job.position_status = "OPEN"
                 
             db.commit()
             
             # Fetch candidates for this job
-            records = zoho_source.fetch(z_job_id)
-            for record in records:
-                c_id = str(record.metadata.get("zoho_candidate_id"))
-                # Candidate model uses email as primary key
-                email = record.email or f"{c_id}@zoho.local"
+            z_short_id = str(z_job.get("Job_Opening_ID"))
+            if z_short_id and z_short_id != "None":
+                records = zoho_source.fetch(z_short_id)
+                for record in records:
+                    c_id = str(record.metadata.get("zoho_candidate_id"))
+                    # Candidate model uses email as primary key
+                    email = record.email or f"{c_id}@zoho.local"
+                    
+                    db_candidate = db.query(Candidate).filter(Candidate.email == email).first()
+                    cv_pdf_data = record.metadata.get("cv_pdf")
+                    if not db_candidate:
+                        logger.info(f"Adding new candidate: {record.name}")
+                        db_candidate = Candidate(
+                            email=email,
+                            name=record.name or "Unknown",
+                            raw_text=record.raw_text,
+                            cv_pdf=cv_pdf_data,
+                            source_name="zoho",
+                            created_at=datetime.now(timezone.utc)
+                        )
+                        db.add(db_candidate)
+                        
+                        # Process extraction and embedding immediately so UI shows data
+                        try:
+                            from hr_agent.api.deps import get_extraction_service, get_embedding_service
+                            from hr_agent.services.candidate_service import apply_extraction_to_candidate
+                            from hr_agent.services.profile_fingerprint_service import build_candidate_fingerprint
+                            from hr_agent.models.processing_log import ProcessingLog, ProcessingStatus
+                            
+                            ex_svc = get_extraction_service()
+                            em_svc = get_embedding_service()
+                            
+                            extracted = ex_svc.extract_cv(record.raw_text)
+                            apply_extraction_to_candidate(db_candidate, extracted)
+                            
+                            # Also generate embeddings
+                            em_svc.generate_and_store(db, "candidate", email, extracted.summary)
+                            em_svc.ensure_fingerprint_embedding(
+                                db, "candidate", email, build_candidate_fingerprint(db_candidate)
+                            )
+                            
+                            # Create a COMPLETED ProcessingLog so it doesn't show PENDING
+                            log = ProcessingLog(
+                                entity_id=email,
+                                entity_type="candidate",
+                                status=ProcessingStatus.EMBEDDED
+                            )
+                            db.add(log)
+                        except Exception as e:
+                            logger.error(f"Failed to process candidate {email}: {e}")
+
+                    else:
+                        if cv_pdf_data and not db_candidate.cv_pdf:
+                            db_candidate.cv_pdf = cv_pdf_data
+                    
+                    # Ensure candidate is in the pool for this job
+                    from hr_agent.models.job_candidate_pool import JobCandidatePool
+                    db_pool = db.query(JobCandidatePool).filter_by(job_id=db_job.id, candidate_id=email).first()
+                    if not db_pool:
+                        db_pool = JobCandidatePool(
+                            job_id=db_job.id,
+                            candidate_id=email,
+                            pool_status="in_pool"
+                        )
+                        db.add(db_pool)
                 
-                db_candidate = db.query(Candidate).filter(Candidate.email == email).first()
-                if not db_candidate:
-                    logger.info(f"Adding new candidate: {record.name}")
-                    db_candidate = Candidate(
-                        email=email,
-                        name=record.name or "Unknown",
-                        raw_text=record.raw_text,
-                        source_name="zoho",
-                        created_at=datetime.now(timezone.utc)
-                    )
-                    db.add(db_candidate)
-            
-            db.commit()
+                db.commit()
+            else:
+                logger.warning(f"Could not fetch candidates for {title}, missing Job_Opening_ID")
             
         logger.info("Zoho Sync completed successfully.")
     except Exception as e:

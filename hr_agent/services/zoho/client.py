@@ -61,26 +61,32 @@ class ZohoRecruitClient:
 
     def get_applications_for_job(self, job_id: str) -> list[dict[str, Any]]:
         """Fetch all applications linked to a specific job opening."""
-        url = f"{self.base_url}/Applications/search"
-        params = {
-            "criteria": f"(Job_Opening_ID:equals:{job_id})"
-        }
+        # Step 1: Get the Job_Opening_ID string (e.g. ZR_39_JOB) from the numeric job_id
+        job_url = f"{self.base_url}/Job_Openings/{job_id}"
         headers = self._get_headers()
-        
         try:
-            response = self.session.get(url, headers=headers, params=params)
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Request failed after retries for job {job_id}: {e}")
-            return []
+            job_res = self.session.get(job_url, headers=headers)
+            if job_res.status_code == 200:
+                job_data = job_res.json().get("data", [])
+                if job_data:
+                    zr_id = job_data[0].get("Job_Opening_ID")
+                    if zr_id:
+                        # Step 2: Search applications by the ZR_ID
+                        url = f"{self.base_url}/Applications/search"
+                        params = {
+                            "criteria": f"(Job_Opening_ID:equals:{zr_id})"
+                        }
+                        try:
+                            response = self.session.get(url, headers=headers, params=params)
+                            if response.status_code == 200:
+                                return response.json().get("data", [])
+                        except requests.exceptions.RequestException as e:
+                            logger.error(f"Request failed for applications search: {e}")
+                            
+        except Exception as e:
+            logger.error(f"Failed to fetch job {job_id} to resolve ZR_ID: {e}")
             
-        if response.status_code == 204:
-            return []
-        elif response.status_code != 200:
-            logger.error(f"Failed to fetch applications for job {job_id}: {response.text}")
-            return []
-            
-        data = response.json()
-        return data.get("data", [])
+        return []
 
     def get_candidate_details(self, candidate_id: str) -> dict[str, Any] | None:
         """Fetch specific candidate details."""

@@ -30,9 +30,9 @@ class CVExtracted(BaseModel):
     """
 
     email: str | None = None
-    candidate_name: str
+    candidate_name: str | None = None
     current_title: str | None = None
-    normalized_role: str
+    normalized_role: str | None = None
     years_experience: float | None = None
     current_company: str | None = None
     location: str | None = None
@@ -45,7 +45,7 @@ class CVExtracted(BaseModel):
     experience_areas: list[str] = Field(default_factory=list)
     responsibilities: list[str] = Field(default_factory=list)
     seniority_level: str | None = None
-    summary: str
+    summary: str | None = None
 
 
 class CandidateResponse(BaseModel):
@@ -77,6 +77,7 @@ class CandidateResponse(BaseModel):
     domain_evidence: list[str] = Field(default_factory=list)
     source_name: str = "local_kb"
     status: str
+    has_cv: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}

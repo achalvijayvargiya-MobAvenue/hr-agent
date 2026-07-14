@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useCandidate, useDeleteCandidate, type EmploymentEntry, type EducationEntry } from './hooks/useSources'
+import api from '../../lib/api'
 
 const SOURCE_STYLES: Record<string, string> = {
   local_kb: 'bg-blue-100 text-blue-800',
@@ -66,6 +67,24 @@ export default function CandidateDetailPage() {
     deleteCandidate.mutate(email, { onSuccess: () => navigate('/candidates') })
   }
 
+  async function handleViewPdf(e: React.MouseEvent) {
+    e.preventDefault();
+    if (!candidate?.email) return;
+    try {
+      const response = await api.get(`/candidates/${encodeURIComponent(candidate.email)}/cv`, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      // Cleanup slightly after open to avoid memory leaks
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      console.error('Failed to load PDF:', error);
+      alert('Failed to load PDF. Please try again later.');
+    }
+  }
+
   if (isLoading) return <p className="text-gray-500 text-sm">Loading…</p>
   if (isError || !candidate) return <p className="text-red-500 text-sm">Candidate not found.</p>
 
@@ -87,6 +106,14 @@ export default function CandidateDetailPage() {
             </p>
           </div>
           <div className="flex items-center gap-2 ml-auto">
+            {candidate.has_cv && (
+              <button
+                onClick={handleViewPdf}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors mr-2 cursor-pointer"
+              >
+                View PDF Resume
+              </button>
+            )}
             <SourceBadge source={candidate.source_name} />
             <button
               onClick={handleDelete}

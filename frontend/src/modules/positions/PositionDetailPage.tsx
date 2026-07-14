@@ -58,6 +58,7 @@ export default function PositionDetailPage() {
   const [certifications, setCertifications] = useState<string[]>([])
   const [responsibilities, setResponsibilities] = useState<string[]>([])
   const [summary, setSummary] = useState('')
+  const [salary, setSalary] = useState('')
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
 
   useEffect(() => {
@@ -80,6 +81,7 @@ export default function PositionDetailPage() {
     setCertifications(position.certifications)
     setResponsibilities(position.responsibilities)
     setSummary(position.summary ?? '')
+    setSalary(position.salary ?? '')
   }, [position])
 
   function buildBody(): PositionUpdateBody {
@@ -102,6 +104,7 @@ export default function PositionDetailPage() {
       certifications: certifications,
       responsibilities: responsibilities,
       summary: summary || null,
+      salary: salary || null,
     }
   }
 
@@ -241,12 +244,16 @@ export default function PositionDetailPage() {
             <input value={industry} onChange={(e) => setIndustry(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>Location</label>
-            <input value={location} onChange={(e) => setLocation(e.target.value)} className={inputClass} />
+            <label className={labelClass}>Salary</label>
+            <input value={salary} onChange={(e) => setSalary(e.target.value)} className={inputClass} placeholder="e.g. $100,000 - $120,000" />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Location</label>
+            <input value={location} onChange={(e) => setLocation(e.target.value)} className={inputClass} />
+          </div>
           <div>
             <label className={labelClass}>Employment Type</label>
             <select value={employmentType} onChange={(e) => setEmploymentType(e.target.value)} className={inputClass}>
