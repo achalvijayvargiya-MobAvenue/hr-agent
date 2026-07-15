@@ -28,26 +28,29 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-8">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-indigo-600">HR Platform</h1>
-          <p className="mt-1 text-sm text-gray-500">Set a new password</p>
+    <div className="min-h-screen flex items-center justify-center bg-zinc-950 relative overflow-hidden font-sans">
+      {/* Subtle abstract background gradient */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-zinc-950 to-zinc-950 z-0 pointer-events-none" />
+
+      <div className="w-full max-w-md bg-zinc-900/80 backdrop-blur-md rounded-2xl border border-zinc-800 shadow-2xl p-8 relative z-10 animate-slide-up">
+        <div className="mb-8 text-center animate-fade-in" style={{ animationDelay: '100ms' }}>
+          <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-indigo-600">HR Platform</h1>
+          <p className="mt-2 text-sm text-zinc-400">Set a new password</p>
         </div>
 
         {resetPassword.isSuccess ? (
-          <div className="text-center space-y-4">
-            <div className="p-4 bg-green-50 text-green-700 rounded-lg border border-green-200">
+          <div className="text-center space-y-4 animate-fade-in" style={{ animationDelay: '200ms' }}>
+            <div className="p-4 bg-emerald-500/10 text-emerald-400 rounded-lg border border-emerald-500/20">
               Your password has been successfully reset!
             </div>
-            <Link to="/login" className="block w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-700">
+            <Link to="/login" className="block w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 hover:shadow-indigo-500/25 hover:shadow-lg transition-all duration-200">
               Go to Login
             </Link>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in" style={{ animationDelay: '200ms' }}>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-zinc-300 mb-1">
                 New Password
               </label>
               <input
@@ -56,13 +59,13 @@ export default function ResetPasswordPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full rounded-lg bg-zinc-950/50 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                 placeholder="••••••••"
               />
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-zinc-300 mb-1">
                 Confirm New Password
               </label>
               <input
@@ -71,13 +74,13 @@ export default function ResetPasswordPage() {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full rounded-lg bg-zinc-950/50 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                 placeholder="••••••••"
               />
             </div>
 
             {(localError || resetPassword.isError) && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 animate-fade-in">
                 {localError || ((resetPassword.error as any)?.response?.data?.detail ?? 'An error occurred. Your token may be invalid or expired.')}
               </p>
             )}
@@ -85,7 +88,7 @@ export default function ResetPasswordPage() {
             <button
               type="submit"
               disabled={resetPassword.isPending}
-              className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 hover:shadow-indigo-500/25 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-zinc-900 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
             >
               {resetPassword.isPending ? 'Resetting...' : 'Reset Password'}
             </button>

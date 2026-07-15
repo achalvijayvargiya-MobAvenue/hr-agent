@@ -78,13 +78,32 @@ def fetch_candidates_for_position(
         if record.metadata.get("candidate_email") is not None:
             continue
 
+        email_hint = normalize_email(record.email)
+        if email_hint:
+            existing = db.query(Candidate).filter_by(email=email_hint).first()
+            if existing:
+                logger.info(
+                    "[API:SOURCES] Candidate %s already exists. Skipping LLM extraction to save cost.", 
+                    email_hint
+                )
+                try:
+                    from hr_agent.core.events import bus
+                    payload = {
+                        "position_id": position_id,
+                        "candidate_email": email_hint
+                    }
+                    bus.emit("CandidateImported", payload)
+                except Exception as e:
+                    logger.error("[API:SOURCES] Failed to emit CandidateImported event for %s: %s", email_hint, e)
+                continue
+
         import_row = create_import(
             db,
             raw_text=record.raw_text,
             source_name=record.source_name,
             name=record.name,
             location=record.location,
-            email_hint=normalize_email(record.email),
+            email_hint=email_hint,
         )
         db.flush()
 

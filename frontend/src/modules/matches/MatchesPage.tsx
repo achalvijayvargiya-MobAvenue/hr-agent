@@ -56,21 +56,21 @@ export default function MatchesPage() {
   const isRunning = recompute.isPending || isFetching
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Matching</h1>
+    <div className="animate-fade-in w-full max-w-[1400px] mx-auto min-w-0">
+      <h1 className="text-2xl font-bold text-zinc-100 mb-6">Matching</h1>
 
       <div className="flex gap-6">
         {/* ── Left panel: controls ──────────────────────────────────────────── */}
-        <aside className="w-64 flex-shrink-0 space-y-5">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
+        <aside className="w-64 flex-shrink-0 space-y-5 animate-slide-up animate-stagger-1">
+          <div className="glass-panel rounded-xl p-5 space-y-5">
 
             {/* Position selector */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-zinc-400 mb-1">
                 Position
               </label>
               {positions.length === 0 ? (
-                <p className="text-xs text-gray-400">No open positions. Approve one first.</p>
+                <p className="text-xs text-zinc-500">No open positions. Approve one first.</p>
               ) : (
                 <select
                   value={selectedPosition}
@@ -78,7 +78,7 @@ export default function MatchesPage() {
                     setSelectedPosition(e.target.value)
                     setRunEnabled(false)
                   }}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
                 >
                   <option value="">— Select position —</option>
                   {positions.map((p) => (
@@ -92,9 +92,9 @@ export default function MatchesPage() {
 
             {/* Top K slider */}
             <div>
-              <label className="flex items-center justify-between text-sm font-medium text-gray-700 mb-1">
+              <label className="flex items-center justify-between text-sm font-medium text-zinc-400 mb-1">
                 <span>Top K results</span>
-                <span className="text-indigo-600 font-bold">{topK}</span>
+                <span className="text-indigo-400 font-bold">{topK}</span>
               </label>
               <input
                 type="range"
@@ -103,9 +103,9 @@ export default function MatchesPage() {
                 step={5}
                 value={topK}
                 onChange={(e) => setTopK(Number(e.target.value))}
-                className="w-full accent-indigo-600"
+                className="w-full accent-indigo-500"
               />
-              <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+              <div className="flex justify-between text-xs text-zinc-500 mt-0.5">
                 <span>5</span>
                 <span>50</span>
               </div>
@@ -114,24 +114,24 @@ export default function MatchesPage() {
             {/* Source filter */}
             {sources.length > 0 && (
               <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">Source filter</p>
+                <p className="text-sm font-medium text-zinc-400 mb-2">Source filter</p>
                 <div className="space-y-1.5">
                   {sources.map((s) => (
-                    <label key={s.name} className="flex items-center gap-2 cursor-pointer">
+                    <label key={s.name} className="flex items-center gap-2 cursor-pointer group">
                       <input
                         type="checkbox"
                         checked={selectedSources.includes(s.name)}
                         onChange={() => handleSourceToggle(s.name)}
-                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        className="rounded border-zinc-600 bg-zinc-800 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-zinc-900"
                       />
-                      <span className="text-sm text-gray-700">{s.display_name}</span>
+                      <span className="text-sm text-zinc-300 group-hover:text-zinc-100 transition-colors">{s.display_name}</span>
                     </label>
                   ))}
                 </div>
                 {selectedSources.length > 0 && (
                   <button
                     onClick={() => setSelectedSources([])}
-                    className="mt-1.5 text-xs text-gray-400 hover:text-gray-600"
+                    className="mt-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
                   >
                     Clear selection
                   </button>
@@ -143,7 +143,7 @@ export default function MatchesPage() {
             <button
               disabled={!selectedPosition || isRunning}
               onClick={handleRunMatching}
-              className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-900/50 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isRunning ? (
                 <span className="flex items-center justify-center gap-2">
@@ -160,19 +160,19 @@ export default function MatchesPage() {
           </div>
 
           {/* Score legend */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Score Legend</p>
-            <div className="space-y-1.5 text-xs text-gray-600">
+          <div className="glass-panel rounded-xl p-4">
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">Score Legend</p>
+            <div className="space-y-2 text-xs text-zinc-400">
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-sm bg-indigo-500 flex-shrink-0" />
+                <span className="w-3 h-3 rounded-sm bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)] flex-shrink-0" />
                 Rule-based score
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-sm bg-sky-400 flex-shrink-0" />
+                <span className="w-3 h-3 rounded-sm bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.6)] flex-shrink-0" />
                 Vector similarity
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-sm bg-violet-500 flex-shrink-0" />
+                <span className="w-3 h-3 rounded-sm bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.6)] flex-shrink-0" />
                 LLM re-rank score
               </div>
             </div>
@@ -180,30 +180,30 @@ export default function MatchesPage() {
         </aside>
 
         {/* ── Right panel: results ──────────────────────────────────────────── */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 animate-slide-up animate-stagger-2">
           {!selectedPosition && (
-            <div className="h-64 flex items-center justify-center rounded-xl border-2 border-dashed border-gray-200">
-              <p className="text-gray-400 text-sm">Select a position and click Run Matching</p>
+            <div className="h-64 flex items-center justify-center rounded-xl border-2 border-dashed border-zinc-800 bg-zinc-950/30">
+              <p className="text-zinc-500 text-sm">Select a position and click Run Matching</p>
             </div>
           )}
 
           {selectedPosition && !runEnabled && !matchResult && (
-            <div className="h-64 flex items-center justify-center rounded-xl border-2 border-dashed border-indigo-100">
+            <div className="h-64 flex items-center justify-center rounded-xl border-2 border-dashed border-indigo-500/30 bg-indigo-500/5">
               <p className="text-indigo-400 text-sm">Click "Run Matching" to see results</p>
             </div>
           )}
 
           {isError && (
-            <div className="rounded-xl bg-red-50 border border-red-200 p-4">
-              <p className="text-sm text-red-600">
+            <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 mb-4">
+              <p className="text-sm text-red-400">
                 Matching failed. Make sure the position has embedded candidates.
               </p>
             </div>
           )}
 
           {recompute.isError && (
-            <div className="rounded-xl bg-red-50 border border-red-200 p-4 mb-4">
-              <p className="text-sm text-red-600">
+            <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 mb-4">
+              <p className="text-sm text-red-400">
                 {(recompute.error as { response?: { data?: { detail?: string } } })?.response?.data
                   ?.detail ?? 'Recompute request failed.'}
               </p>
@@ -211,7 +211,7 @@ export default function MatchesPage() {
           )}
 
           {matchResult && selectedPositionData && (
-            <p className="text-xs text-gray-500 mb-3">
+            <p className="text-xs text-zinc-500 mb-3 ml-1">
               Matching runs on the domain pool only. Build the pool on the position page first.
             </p>
           )}

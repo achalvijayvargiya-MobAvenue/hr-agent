@@ -1,1 +1,61 @@
 @import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-zinc-950 text-zinc-100 antialiased overflow-x-hidden;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-stagger-1 { animation-delay: 100ms; }
+  .animate-stagger-2 { animation-delay: 200ms; }
+  .animate-stagger-3 { animation-delay: 300ms; }
+  .animate-stagger-4 { animation-delay: 400ms; }
+  
+  .glass-panel {
+    @apply bg-zinc-900/80 backdrop-blur-md border border-zinc-800 shadow-xl;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom Scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #18181b; /* zinc-950 */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3f3f46; /* zinc-700 */
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b; /* zinc-600 */
+}

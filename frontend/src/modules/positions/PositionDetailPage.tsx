@@ -13,15 +13,15 @@ import DomainPanel from './DomainPanel'
 import CandidatePoolPanel from './CandidatePoolPanel'
 
 const STATUS_STYLES: Record<string, string> = {
-  DRAFT: 'bg-yellow-100 text-yellow-800',
-  OPEN: 'bg-green-100 text-green-800',
-  CLOSED: 'bg-gray-100 text-gray-700',
+  DRAFT: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+  OPEN: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  CLOSED: 'bg-zinc-800 text-zinc-400 border-zinc-700',
 }
 
 function StatusBadge({ status }: { status: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${STATUS_STYLES[status] ?? 'bg-gray-100 text-gray-600'}`}
+      className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold border ${STATUS_STYLES[status] ?? 'bg-zinc-800 text-zinc-400 border-zinc-700'}`}
     >
       {status}
     </span>
@@ -29,8 +29,8 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
-const labelClass = 'block text-sm font-medium text-gray-700 mb-1'
+  'w-full rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-colors'
+const labelClass = 'block text-sm font-medium text-zinc-400 mb-1'
 
 export default function PositionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -133,8 +133,8 @@ export default function PositionDetailPage() {
     deletePosition.mutate(id, { onSuccess: () => navigate('/positions') })
   }
 
-  if (isLoading) return <p className="text-gray-500 text-sm">Loading…</p>
-  if (isError || !position) return <p className="text-red-500 text-sm">Position not found.</p>
+  if (isLoading) return <p className="text-zinc-500 text-sm glass-panel p-4 rounded-xl">Loading…</p>
+  if (isError || !position) return <p className="text-red-400 text-sm glass-panel p-4 rounded-xl">Position not found.</p>
 
   const isDraft = positionStatus === 'DRAFT'
   const isBusy = update.isPending || approve.isPending || deletePosition.isPending
@@ -144,11 +144,11 @@ export default function PositionDetailPage() {
     (deletePosition.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail
 
   return (
-    <div className="max-w-3xl">
+    <div className="animate-fade-in w-full max-w-[1400px] mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">
+          <h1 className="text-2xl font-bold text-zinc-100 mb-2">
             {title || position.title || 'Untitled Position'}
           </h1>
           <StatusBadge status={positionStatus} />
@@ -157,7 +157,7 @@ export default function PositionDetailPage() {
           <button
             onClick={handleSave}
             disabled={isBusy}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-900/50 hover:bg-indigo-500 disabled:opacity-50 transition-colors"
           >
             {update.isPending ? 'Saving…' : 'Save Changes'}
           </button>
@@ -165,7 +165,7 @@ export default function PositionDetailPage() {
             <button
               onClick={handleApprove}
               disabled={isBusy}
-              className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-900/50 hover:bg-emerald-500 disabled:opacity-50 transition-colors"
             >
               {approve.isPending ? 'Approving…' : 'Approve & Open'}
             </button>
@@ -173,7 +173,7 @@ export default function PositionDetailPage() {
           <button
             onClick={handleDelete}
             disabled={isBusy}
-            className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50 transition-colors"
+            className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/20 hover:text-red-300 disabled:opacity-50 transition-colors"
           >
             {deletePosition.isPending ? 'Deleting…' : 'Delete'}
           </button>
@@ -181,19 +181,19 @@ export default function PositionDetailPage() {
       </div>
 
       {saveMessage && (
-        <p className="mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+        <p className="mb-4 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 animate-slide-up">
           {saveMessage}
         </p>
       )}
       {actionError && (
-        <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+        <p className="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 animate-slide-up">
           {actionError}
         </p>
       )}
 
       {/* Position fields */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5">
-        <h2 className="text-base font-semibold text-gray-800 border-b border-gray-100 pb-2">
+      <div className="glass-panel rounded-xl p-6 space-y-5 animate-slide-up animate-stagger-1">
+        <h2 className="text-base font-semibold text-zinc-100 border-b border-zinc-800 pb-2">
           Position Details
         </h2>
 
@@ -345,8 +345,8 @@ export default function PositionDetailPage() {
         education={education}
       />
 
-      <p className="mt-4 text-xs text-gray-400">
-        Processing status: <span className="font-medium">{position.status}</span>
+      <p className="mt-4 text-xs text-zinc-500">
+        Processing status: <span className="font-medium text-zinc-300">{position.status}</span>
         {' · '}Created {new Date(position.created_at).toLocaleString()}
       </p>
     </div>

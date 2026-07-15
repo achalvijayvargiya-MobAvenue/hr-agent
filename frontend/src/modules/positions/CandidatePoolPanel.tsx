@@ -12,10 +12,10 @@ interface Props {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  in_pool: 'bg-green-100 text-green-800',
-  manual_add: 'bg-blue-100 text-blue-800',
-  out_of_pool: 'bg-gray-100 text-gray-600',
-  manual_exclude: 'bg-red-100 text-red-700',
+  in_pool: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+  manual_add: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
+  out_of_pool: 'bg-zinc-800 text-zinc-400 border border-zinc-700',
+  manual_exclude: 'bg-red-500/10 text-red-400 border border-red-500/20',
 }
 
 function PoolRow({
@@ -29,38 +29,38 @@ function PoolRow({
   const inPool = entry.pool_status === 'in_pool' || entry.pool_status === 'manual_add'
 
   return (
-    <tr className={inPool ? '' : 'opacity-60'}>
-      <td className="px-4 py-2 text-sm">
+    <tr className={`border-b border-zinc-800/50 ${inPool ? '' : 'opacity-60'}`}>
+      <td className="px-4 py-3 text-sm">
         <Link
           to={`/candidates/${encodeURIComponent(entry.candidate_id)}`}
-          className="font-medium text-gray-900 hover:text-indigo-600"
+          className="font-medium text-zinc-100 hover:text-indigo-400 transition-colors"
         >
           {entry.candidate_name ?? entry.candidate_id}
         </Link>
         {entry.current_title && (
-          <p className="text-xs text-gray-500">{entry.current_title}</p>
+          <p className="text-xs text-zinc-500">{entry.current_title}</p>
         )}
       </td>
-      <td className="px-4 py-2 text-sm text-gray-600">
+      <td className="px-4 py-3 text-sm text-zinc-400">
         {entry.domain_code ?? '—'}
         {entry.subdomain_codes.length > 0 && (
-          <p className="text-xs text-gray-400">{entry.subdomain_codes.join(', ')}</p>
+          <p className="text-xs text-zinc-500">{entry.subdomain_codes.join(', ')}</p>
         )}
       </td>
-      <td className="px-4 py-2 text-sm font-medium text-gray-800">
+      <td className="px-4 py-3 text-sm font-medium text-zinc-100">
         {(entry.relevance_score * 100).toFixed(0)}%
       </td>
-      <td className="px-4 py-2">
+      <td className="px-4 py-3">
         <span
-          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[entry.pool_status] ?? 'bg-gray-100'}`}
+          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[entry.pool_status] ?? 'bg-zinc-800 text-zinc-400'}`}
         >
           {entry.pool_status.replace(/_/g, ' ')}
         </span>
       </td>
-      <td className="px-4 py-2 text-xs text-gray-500 max-w-xs truncate" title={entry.match_reason ?? ''}>
+      <td className="px-4 py-3 text-xs text-zinc-500 max-w-xs truncate" title={entry.match_reason ?? ''}>
         {entry.match_reason ?? '—'}
       </td>
-      <td className="px-4 py-2 text-right">
+      <td className="px-4 py-3 text-right">
         <div className="flex gap-1 justify-end">
           {!inPool && (
             <button
@@ -72,7 +72,7 @@ function PoolRow({
                 })
               }
               disabled={updateMember.isPending}
-              className="text-xs text-blue-600 hover:underline"
+              className="text-xs text-blue-400 hover:text-blue-300 hover:underline transition-colors"
             >
               Add
             </button>
@@ -87,7 +87,7 @@ function PoolRow({
                 })
               }
               disabled={updateMember.isPending}
-              className="text-xs text-red-600 hover:underline"
+              className="text-xs text-red-400 hover:text-red-300 hover:underline transition-colors"
             >
               Exclude
             </button>
@@ -102,7 +102,7 @@ function PoolRow({
                 })
               }
               disabled={updateMember.isPending}
-              className="text-xs text-gray-500 hover:underline"
+              className="text-xs text-zinc-400 hover:text-zinc-300 hover:underline transition-colors"
             >
               Reset
             </button>
@@ -137,42 +137,42 @@ export default function CandidatePoolPanel({ positionId }: Props) {
     (buildPool.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail
 
   return (
-    <div className="mt-6 bg-white rounded-xl border border-emerald-200 shadow-sm p-6 space-y-4">
+    <div className="mt-6 glass-panel rounded-xl border border-emerald-500/20 p-6 space-y-4 animate-slide-up animate-stagger-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold text-emerald-800">Candidate Pool</h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <h2 className="text-base font-semibold text-emerald-400">Candidate Pool</h2>
+          <p className="text-sm text-zinc-400 mt-1">
             Domain-based grouping — only relevant candidates appear here before matching.
           </p>
         </div>
         <button
           onClick={handleBuild}
           disabled={buildPool.isPending || isFetching}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-900/50 hover:bg-emerald-500 disabled:opacity-50 transition-colors"
         >
           {buildPool.isPending ? 'Building…' : activePool ? 'Rebuild Pool' : 'Build Pool'}
         </button>
       </div>
 
       {error && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+        <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 animate-slide-up">
           {error}
         </p>
       )}
 
       {activePool && (
-        <div className="flex flex-wrap gap-4 text-sm">
+        <div className="flex flex-wrap gap-4 text-sm bg-zinc-950/50 border border-zinc-800/50 rounded-lg p-3">
           <span>
-            <strong className="text-emerald-700">{activePool.in_pool}</strong> in pool
+            <strong className="text-emerald-400">{activePool.in_pool}</strong> <span className="text-zinc-300">in pool</span>
           </span>
-          <span className="text-gray-400">·</span>
-          <span>{activePool.out_of_pool} excluded</span>
-          <span className="text-gray-400">·</span>
-          <span>{activePool.total_candidates} total evaluated</span>
+          <span className="text-zinc-600">·</span>
+          <span className="text-zinc-400">{activePool.out_of_pool} excluded</span>
+          <span className="text-zinc-600">·</span>
+          <span className="text-zinc-400">{activePool.total_candidates} total evaluated</span>
           {activePool.computed_at && (
             <>
-              <span className="text-gray-400">·</span>
-              <span className="text-gray-400 text-xs">
+              <span className="text-zinc-600">·</span>
+              <span className="text-zinc-500 text-xs">
                 built {new Date(activePool.computed_at).toLocaleString()}
               </span>
             </>
@@ -181,7 +181,7 @@ export default function CandidatePoolPanel({ positionId }: Props) {
       )}
 
       {!activePool && !buildPool.isPending && (
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-zinc-500">
           Set domain above, then click Build Pool to group relevant candidates.
         </p>
       )}
@@ -189,29 +189,29 @@ export default function CandidatePoolPanel({ positionId }: Props) {
       {displayed.length > 0 && (
         <>
           <div className="flex justify-between items-center">
-            <p className="text-sm font-medium text-gray-700">
-              {showAll ? 'All candidates' : 'In pool'} ({displayed.length})
+            <p className="text-sm font-medium text-zinc-300">
+              {showAll ? 'All candidates' : 'In pool'} <span className="text-zinc-500">({displayed.length})</span>
             </p>
             <button
               onClick={() => setShowAll((v) => !v)}
-              className="text-xs text-emerald-600 hover:underline"
+              className="text-xs text-emerald-400 hover:text-emerald-300 hover:underline transition-colors"
             >
               {showAll ? 'Show in-pool only' : `Show all (${entries.length})`}
             </button>
           </div>
-          <div className="overflow-x-auto rounded-lg border border-gray-200">
-            <table className="min-w-full divide-y divide-gray-100">
-              <thead className="bg-gray-50">
+          <div className="overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-950/30">
+            <table className="min-w-full">
+              <thead className="bg-zinc-900/50 border-b border-zinc-800">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Candidate</th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Domain</th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Relevance</th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Status</th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Reason</th>
-                  <th className="px-4 py-2 text-right text-xs font-semibold uppercase text-gray-500">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-zinc-500 tracking-wider">Candidate</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-zinc-500 tracking-wider">Domain</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-zinc-500 tracking-wider">Relevance</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-zinc-500 tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-zinc-500 tracking-wider">Reason</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-zinc-500 tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 bg-white">
+              <tbody className="divide-y divide-zinc-800/50">
                 {displayed.map((entry) => (
                   <PoolRow key={entry.candidate_id} entry={entry} positionId={positionId} />
                 ))}

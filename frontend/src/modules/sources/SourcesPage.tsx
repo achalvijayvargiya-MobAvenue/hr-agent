@@ -10,7 +10,7 @@ interface Toast {
 function AvailabilityDot({ available }: { available: boolean }) {
   return (
     <span
-      className={`inline-block w-2.5 h-2.5 rounded-full ${available ? 'bg-green-500' : 'bg-gray-300'}`}
+      className={`inline-block w-2.5 h-2.5 rounded-full ${available ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-zinc-600'}`}
       title={available ? 'Available' : 'Unavailable'}
     />
   )
@@ -49,13 +49,13 @@ export default function SourcesPage() {
   }
 
   return (
-    <div>
+    <div className="animate-fade-in w-full max-w-[1400px] mx-auto min-w-0">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Candidate Sources</h1>
+        <h1 className="text-2xl font-bold text-zinc-100">Candidate Sources</h1>
         <button
           onClick={() => setModalOpen(true)}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-900/50 hover:bg-indigo-500 transition-colors"
         >
           Fetch for Position
         </button>
@@ -75,45 +75,46 @@ export default function SourcesPage() {
       )}
 
       {/* Source Cards Grid */}
-      {isLoading && <p className="text-gray-500 text-sm">Loading sources…</p>}
+      {isLoading && <p className="text-zinc-500 text-sm glass-panel p-4 rounded-xl animate-slide-up animate-stagger-1">Loading sources…</p>}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sources.map((source) => (
+        {sources.map((source, idx) => (
           <div
             key={source.name}
-            className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col gap-3"
+            className="glass-panel rounded-xl p-5 flex flex-col gap-3 animate-slide-up hover:-translate-y-1 transition-transform group"
+            style={{ animationDelay: `${(idx + 1) * 100}ms` }}
           >
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-gray-900">{source.display_name}</h2>
-              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+              <h2 className="font-semibold text-zinc-100 group-hover:text-indigo-400 transition-colors">{source.display_name}</h2>
+              <div className="flex items-center gap-1.5 text-xs text-zinc-400">
                 <AvailabilityDot available={source.is_available} />
                 {source.is_available ? 'Available' : 'Unavailable'}
               </div>
             </div>
-            <p className="text-xs text-gray-400 font-mono">{source.name}</p>
+            <p className="text-xs text-zinc-500 font-mono bg-zinc-950/50 p-2 rounded-lg border border-zinc-800/50">{source.name}</p>
           </div>
         ))}
 
         {!isLoading && sources.length === 0 && (
-          <p className="text-gray-400 text-sm col-span-3">No sources registered.</p>
+          <p className="text-zinc-500 text-sm col-span-3 glass-panel p-8 text-center rounded-xl animate-slide-up animate-stagger-2">No sources registered.</p>
         )}
       </div>
 
       {/* Fetch for Position Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Select an Open Position</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl glass-panel p-6 shadow-2xl animate-slide-up border-zinc-700">
+            <h2 className="text-lg font-semibold text-zinc-100 mb-4">Select an Open Position</h2>
 
             {positions.length === 0 ? (
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-zinc-400 mb-4">
                 No open positions found. Approve a position first.
               </p>
             ) : (
               <select
                 value={selectedPosition}
                 onChange={(e) => setSelectedPosition(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 mb-4 transition-colors"
               >
                 <option value="">— Choose a position —</option>
                 {positions.map((p) => (
@@ -127,14 +128,14 @@ export default function SourcesPage() {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => { setModalOpen(false); setSelectedPosition('') }}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
               >
                 Cancel
               </button>
               <button
                 disabled={!selectedPosition || fetchCandidates.isPending}
                 onClick={handleFetch}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {fetchCandidates.isPending ? 'Fetching…' : 'Fetch Candidates'}
               </button>

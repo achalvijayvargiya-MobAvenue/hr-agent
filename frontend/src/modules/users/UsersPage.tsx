@@ -14,9 +14,9 @@ import {
 // ── Role badge ──────────────────────────────────────────────────────────────────
 
 const ROLE_COLORS: Record<string, string> = {
-  admin: 'bg-red-100 text-red-700',
-  recruiter: 'bg-indigo-100 text-indigo-700',
-  viewer: 'bg-gray-100 text-gray-600',
+  admin: 'bg-red-500/10 text-red-400 border-red-500/20',
+  recruiter: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+  viewer: 'bg-zinc-800 text-zinc-400 border-zinc-700',
 }
 
 interface RoleBadgeProps {
@@ -26,17 +26,17 @@ interface RoleBadgeProps {
 }
 
 function RoleBadge({ role, onRemove, isRemoving }: RoleBadgeProps) {
-  const style = ROLE_COLORS[role] ?? 'bg-gray-100 text-gray-700'
+  const style = ROLE_COLORS[role] ?? 'bg-zinc-800 text-zinc-400 border-zinc-700'
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${style}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium border ${style}`}
     >
       {role}
       <button
         type="button"
         onClick={onRemove}
         disabled={isRemoving}
-        className="hover:opacity-70 disabled:opacity-40 focus:outline-none"
+        className="hover:opacity-70 disabled:opacity-40 focus:outline-none ml-1 transition-opacity"
         title={`Remove ${role}`}
       >
         ×
@@ -75,18 +75,18 @@ function AddRoleDropdown({ user, availableRoles, onAdd, isAdding }: AddRoleDropd
         type="button"
         onClick={() => setOpen((o) => !o)}
         disabled={isAdding}
-        className="rounded border border-gray-200 px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+        className="rounded border border-zinc-700 px-2 py-0.5 text-xs text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 disabled:opacity-50 transition-colors"
       >
         + Add role
       </button>
       {open && (
-        <div className="absolute left-0 mt-1 z-20 w-32 rounded-lg border border-gray-200 bg-white shadow-lg py-1">
+        <div className="absolute left-0 mt-1 z-20 w-32 rounded-lg border border-zinc-800 bg-zinc-900 shadow-xl py-1">
           {unassigned.map((r) => (
             <button
               key={r}
               type="button"
               onClick={() => { onAdd(r); setOpen(false) }}
-              className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700"
+              className="w-full text-left px-3 py-1.5 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-indigo-400 transition-colors"
             >
               {r}
             </button>
@@ -113,8 +113,8 @@ function ActiveToggle({ userId, isActive }: ActiveToggleProps) {
       aria-checked={isActive}
       onClick={() => updateUser.mutate({ id: userId, body: { is_active: !isActive } })}
       disabled={updateUser.isPending}
-      className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 disabled:opacity-50 cursor-pointer ${
-        isActive ? 'bg-indigo-600' : 'bg-gray-200'
+      className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 focus:ring-offset-zinc-950 disabled:opacity-50 cursor-pointer ${
+        isActive ? 'bg-indigo-600' : 'bg-zinc-700'
       }`}
     >
       <span
@@ -158,16 +158,16 @@ function InviteModal({ availableRoles, onClose }: InviteModalProps) {
   }
 
   const inputClass =
-    'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+    'w-full rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-gray-900 mb-5">Invite User</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-md rounded-2xl glass-panel p-6 shadow-2xl animate-slide-up border-zinc-700">
+        <h2 className="text-lg font-semibold text-zinc-100 mb-5">Invite User</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-zinc-400 mb-1">
+              Email <span className="text-red-400">*</span>
             </label>
             <input
               type="email"
@@ -179,8 +179,8 @@ function InviteModal({ availableRoles, onClose }: InviteModalProps) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-zinc-400 mb-1">
+              Password <span className="text-red-400">*</span>
             </label>
             <input
               type="password"
@@ -193,7 +193,7 @@ function InviteModal({ availableRoles, onClose }: InviteModalProps) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+            <label className="block text-sm font-medium text-zinc-400 mb-1">Full Name</label>
             <input
               type="text"
               value={fullName}
@@ -203,7 +203,7 @@ function InviteModal({ availableRoles, onClose }: InviteModalProps) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Assign Role</label>
+            <label className="block text-sm font-medium text-zinc-400 mb-1">Assign Role</label>
             <select value={role} onChange={(e) => setRole(e.target.value)} className={inputClass}>
               <option value="">— None —</option>
               {availableRoles.map((r) => (
@@ -215,24 +215,24 @@ function InviteModal({ availableRoles, onClose }: InviteModalProps) {
           </div>
 
           {invite.isError && (
-            <p className="text-sm text-red-600">
+            <p className="text-sm text-red-400">
               {(invite.error as { response?: { data?: { detail?: string } } })?.response?.data
                 ?.detail ?? 'Failed to create user.'}
             </p>
           )}
 
-          <div className="flex justify-end gap-3 pt-1">
+          <div className="flex justify-end gap-3 pt-4 mt-2">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={invite.isPending || assignRole.isPending}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg hover:bg-indigo-500 disabled:opacity-50 transition-colors"
             >
               {invite.isPending ? 'Creating…' : 'Invite User'}
             </button>
@@ -264,49 +264,49 @@ export default function UsersPage() {
   }
 
   return (
-    <div>
+    <div className="animate-fade-in w-full max-w-[1400px] mx-auto min-w-0">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+        <h1 className="text-2xl font-bold text-zinc-100">User Management</h1>
         <button
           onClick={() => setInviteOpen(true)}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-900/50 hover:bg-indigo-500 transition-colors"
         >
           + Invite User
         </button>
       </div>
 
-      {isLoading && <p className="text-sm text-gray-500">Loading users…</p>}
-      {isError && <p className="text-sm text-red-500">Failed to load users.</p>}
+      {isLoading && <p className="text-sm text-zinc-500 glass-panel p-4 rounded-xl animate-slide-up animate-stagger-1">Loading users…</p>}
+      {isError && <p className="text-sm text-red-400 glass-panel p-4 rounded-xl">Failed to load users.</p>}
 
       {!isLoading && !isError && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="overflow-hidden rounded-xl glass-panel animate-slide-up animate-stagger-2">
+          <table className="min-w-full divide-y divide-zinc-800">
+            <thead className="bg-zinc-900">
               <tr>
                 {['Email', 'Full Name', 'Roles', 'Active', 'Joined'].map((h) => (
                   <th
                     key={h}
-                    className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                    className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-zinc-400"
                   >
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-zinc-800 bg-zinc-950/30">
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={user.id} className="hover:bg-zinc-800/80 transition-colors group">
                   {/* Email */}
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{user.email}</td>
+                  <td className="px-4 py-4 text-sm font-medium text-zinc-100 group-hover:text-indigo-400 transition-colors">{user.email}</td>
 
                   {/* Full name */}
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {user.full_name ?? <span className="text-gray-400 italic">—</span>}
+                  <td className="px-4 py-4 text-sm text-zinc-400">
+                    {user.full_name ?? <span className="text-zinc-600 italic">—</span>}
                   </td>
 
                   {/* Roles */}
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">
                     <div className="flex flex-wrap items-center gap-1.5">
                       {user.roles.map((role) => (
                         <RoleBadge
@@ -328,12 +328,12 @@ export default function UsersPage() {
                   </td>
 
                   {/* Active toggle */}
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">
                     <ActiveToggle userId={user.id} isActive={user.is_active} />
                   </td>
 
                   {/* Joined */}
-                  <td className="px-4 py-3 text-sm text-gray-500">
+                  <td className="px-4 py-4 text-sm text-zinc-500">
                     {new Date(user.created_at).toLocaleDateString()}
                   </td>
                 </tr>
@@ -341,7 +341,7 @@ export default function UsersPage() {
 
               {users.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-zinc-500">
                     No users found.
                   </td>
                 </tr>

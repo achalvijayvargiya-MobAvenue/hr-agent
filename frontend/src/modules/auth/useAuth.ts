@@ -25,7 +25,6 @@ export function useCurrentUser() {
 }
 
 export function useRegister() {
-  const queryClient = useQueryClient()
   const navigate = useNavigate()
 
   return useMutation({
