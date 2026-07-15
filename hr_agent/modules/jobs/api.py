@@ -255,10 +255,17 @@ def _process_job(
         except Exception as exc:
             logger.warning("[BG:JOB] Unexpected domain classification error for job %s: %s", job_id, exc)
 
-        job.position_status = "DRAFT"
         if log:
             log.status = ProcessingStatus.STRUCTURED
         db.commit()
+        
+        try:
+            from hr_agent.core.deps import get_pool_service
+            pool_svc = get_pool_service()
+            pool_svc.build_pool(db, job_id)
+        except Exception as e:
+            logger.error("[BG:JOB] Failed to build pool for job %s: %s", job_id, e)
+            
         logger.info(
             "[BG:JOB] Job %s structured — title=%r  role=%r  exp=%s–%s  seniority=%r  "
             "must_have=%s  tools=%s  status→STRUCTURED  position_status→DRAFT",
@@ -343,6 +350,14 @@ def _process_manual_job(
             if log:
                 log.status = ProcessingStatus.EMBEDDED
             db.commit()
+            
+            try:
+                from hr_agent.core.deps import get_pool_service
+                pool_svc = get_pool_service()
+                pool_svc.build_pool(db, job_id)
+            except Exception as e:
+                logger.error("[BG:JOB] Failed to build pool for manual job %s: %s", job_id, e)
+                
             logger.info(
                 "[BG:JOB] Manual job %s fully processed — status→EMBEDDED  ✓", job_id
             )
@@ -549,6 +564,13 @@ def sync_zoho_jobs(
         if zjob.get("City") and zjob.get("State"):
             loc = f"{zjob.get('City')}, {zjob.get('State')}"
 
+        zoho_created = None
+        if zjob.get("Created_Time"):
+            try:
+                zoho_created = datetime.fromisoformat(str(zjob.get("Created_Time")).replace("Z", "+00:00"))
+            except ValueError:
+                pass
+
         existing = db.query(Job).filter_by(zoho_id=zoho_id).first()
         if existing:
             def norm(v):
@@ -601,6 +623,10 @@ def sync_zoho_jobs(
             if norm(old_zjob.get("Job_Opening_Status")) != norm(zjob.get("Job_Opening_Status")):
                 existing.position_status = pos_status
                 changed = True
+                
+            if zoho_created and existing.created_at != zoho_created:
+                existing.created_at = zoho_created
+                changed = True
 
             if changed:
                 existing.zoho_data = zjob
@@ -632,6 +658,9 @@ def sync_zoho_jobs(
             zoho_data=zjob,
             raw_text=full_text,
         )
+        if zoho_created:
+            new_job.created_at = zoho_created
+            
         db.add(new_job)
         db.flush()
         
@@ -847,6 +876,7 @@ def classify_job_domain(
     job_id: str,
     db: Session = Depends(get_db),
     domain_svc: DomainClassificationService = Depends(get_domain_classification_service),
+    pool_svc: PoolService = Depends(get_pool_service),
 ) -> JobResponse:
     """Re-run LLM domain/subdomain classification from current job fields."""
     job = db.query(Job).filter_by(id=job_id).first()
@@ -871,6 +901,12 @@ def classify_job_domain(
         apply_domain_to_job(job, classification)
         db.commit()
         db.refresh(job)
+        
+        try:
+            pool_svc.build_pool(db, job.id)
+        except Exception as e:
+            logger.error("Failed to build pool for job %s: %s", job.id, e)
+            
     except DomainClassificationError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -878,7 +914,12 @@ def classify_job_domain(
 
 
 @router.put("/{job_id}/domain", response_model=JobResponse)
-def update_job_domain(job_id: str, body: DomainUpdate, db: Session = Depends(get_db)) -> JobResponse:
+def update_job_domain(
+    job_id: str,
+    body: DomainUpdate,
+    db: Session = Depends(get_db),
+    pool_svc: PoolService = Depends(get_pool_service),
+) -> JobResponse:
     """Manually set domain and subdomains from the taxonomy."""
     job = db.query(Job).filter_by(id=job_id).first()
     if job is None:
@@ -889,6 +930,12 @@ def update_job_domain(job_id: str, body: DomainUpdate, db: Session = Depends(get
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     db.commit()
     db.refresh(job)
+    
+    try:
+        pool_svc.build_pool(db, job.id)
+    except Exception as e:
+        logger.error("Failed to build pool for job %s: %s", job.id, e)
+        
     return _job_to_response(job, db)
 
 

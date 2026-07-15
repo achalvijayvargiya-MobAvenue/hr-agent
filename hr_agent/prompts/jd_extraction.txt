@@ -27,9 +27,9 @@ Schema:
 
 Extraction Rules
 
-1. Use only information explicitly present in the JD.
-2. Do NOT hallucinate.
-3. Use null for missing scalar values.
+1. Extract information explicitly present in the JD where possible.
+2. For missing structural fields like "department", "seniority_level", or "employment_type", do NOT leave them as null if they can be logically and accurately inferred. Use your professional HR expertise to infer the most standard value based on the job title, responsibilities, and industry norms.
+3. Use null ONLY for missing scalar values that cannot be accurately inferred (e.g. salary, exact experience).
 4. Use [] for missing arrays.
 5. Normalize skill names:
    - Python 3 → Python

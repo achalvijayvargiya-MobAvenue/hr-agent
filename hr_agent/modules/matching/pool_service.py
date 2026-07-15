@@ -216,6 +216,42 @@ class PoolService:
         db.refresh(row)
         return row
 
+    def sync_candidate_across_pools(self, db: Session, candidate_id: str) -> None:
+        """
+        Re-score a candidate in all existing job pools (e.g. after a domain update).
+        Preserves manual_add / manual_exclude overrides.
+        """
+        candidate = db.query(Candidate).filter_by(email=candidate_id).first()
+        if not candidate:
+            return
+
+        pools = db.query(JobCandidatePool).filter_by(candidate_id=candidate_id).all()
+        if not pools:
+            return
+
+        now = datetime.now(timezone.utc)
+        updated_count = 0
+        for row in pools:
+            if row.pool_status in ("manual_add", "manual_exclude"):
+                continue
+
+            job = db.query(Job).filter_by(id=row.job_id).first()
+            if not job:
+                continue
+
+            updated = self._score_candidate(job, candidate, now)
+            row.pool_status = updated.pool_status
+            row.domain_match_score = updated.domain_match_score
+            row.subdomain_match_score = updated.subdomain_match_score
+            row.relevance_score = updated.relevance_score
+            row.match_reason = updated.match_reason
+            row.computed_at = updated.computed_at
+            updated_count += 1
+            
+        if updated_count > 0:
+            db.commit()
+            logger.info("[POOL] Synced candidate %s across %d pools", candidate_id, updated_count)
+
     def get_pool(self, db: Session, job_id: str) -> list[JobCandidatePool]:
         return (
             db.query(JobCandidatePool)

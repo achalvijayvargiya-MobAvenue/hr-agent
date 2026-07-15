@@ -22,7 +22,7 @@ from hr_agent.modules.jobs.schemas import JDExtracted
 
 logger = logging.getLogger(__name__)
 
-PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
+PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
 
 
 def _load_prompt(filename: str) -> str:

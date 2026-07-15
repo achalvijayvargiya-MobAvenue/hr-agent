@@ -104,6 +104,10 @@ export function usePositions(status?: string) {
       const { data } = await api.get<Position[]>('/jobs', { params })
       return data
     },
+    refetchInterval: (query) => {
+      const data = query.state.data as Position[] | undefined
+      return data?.some((p) => p.status === 'EXTRACTED' || p.status === 'STRUCTURED') ? 2000 : false
+    },
   })
 }
 

@@ -14,6 +14,7 @@ Rules:
 
 Schema:
 {{
+  "reasoning": "<Step-by-step reasoning explaining why this profile fits specific domains and subdomains before making a final selection. Ensure you evaluate all options against the rules.>",
   "domain_code": "<DOMAIN code>",
   "domain_label": "<human label>",
   "subdomains": [

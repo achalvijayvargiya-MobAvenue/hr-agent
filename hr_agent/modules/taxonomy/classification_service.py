@@ -16,7 +16,7 @@ import hr_agent.modules.taxonomy.taxonomy_service as taxonomy_service
 
 logger = logging.getLogger(__name__)
 
-PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
+PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
 
 
 class DomainClassificationError(Exception):

@@ -115,14 +115,12 @@ function PoolRow({
 
 export default function CandidatePoolPanel({ positionId }: Props) {
   const [showAll, setShowAll] = useState(false)
-  const [poolEnabled, setPoolEnabled] = useState(false)
   const buildPool = useBuildJobPool()
-  const { data: pool, isFetching, refetch } = useJobPool(positionId, poolEnabled)
+  const { data: pool, isFetching, refetch } = useJobPool(positionId)
 
   function handleBuild() {
     buildPool.mutate(positionId, {
       onSuccess: () => {
-        setPoolEnabled(true)
         refetch()
       },
     })

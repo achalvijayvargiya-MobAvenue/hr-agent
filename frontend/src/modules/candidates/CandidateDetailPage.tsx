@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useCandidate, useDeleteCandidate, type EmploymentEntry, type EducationEntry } from './hooks/useSources'
 import api from '../../lib/api'
+import CandidateDomainPanel from './CandidateDomainPanel'
 
 const SOURCE_STYLES: Record<string, string> = {
   local_kb: 'bg-blue-100 text-blue-800',
@@ -139,6 +140,8 @@ export default function CandidateDetailPage() {
           <Field label="Processing" value={candidate.status} />
         </div>
       </div>
+
+      <CandidateDomainPanel email={candidate.email} candidate={candidate} />
 
       {candidate.summary && (
         <Section title="Summary">

@@ -3,16 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { usePositions, useUploadPosition, useSyncZohoPositions } from './hooks/usePositions'
 import ManualPositionForm from './ManualPositionForm'
 
-interface Toast {
-  type: 'success' | 'error' | 'info'
-  message?: string
-  data?: {
-    added: number
-    updated: number
-    added_titles: string[]
-    updated_titles: string[]
-  }
-}
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: 'bg-yellow-100 text-yellow-800',
@@ -36,7 +26,8 @@ export default function PositionsPage() {
   const upload = useUploadPosition()
   const syncZoho = useSyncZohoPositions()
 
-  const [toast, setToast] = useState<Toast | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [syncError, setSyncError] = useState('')
 
   const [uploadOpen, setUploadOpen] = useState(false)
   const [slideOverOpen, setSlideOverOpen] = useState(false)
@@ -76,28 +67,48 @@ export default function PositionsPage() {
     })
   }
 
+  const filteredPositions = positions.filter((p) => {
+    if (!searchQuery) return true
+    const q = searchQuery.toLowerCase()
+    return (
+      (p.title && p.title.toLowerCase().includes(q)) ||
+      (p.department && p.department.toLowerCase().includes(q))
+    )
+  })
+
   return (
     <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Open Positions</h1>
         <div className="flex gap-3">
-          <button
-            onClick={() => {
-              syncZoho.mutate(undefined, {
-                onSuccess: (data) => {
-                  setToast({ type: 'success', data })
-                },
-                onError: () => {
-                  setToast({ type: 'error', message: 'Failed to sync positions from Zoho.' })
-                }
-              })
-            }}
-            disabled={syncZoho.isPending}
-            className="rounded-lg border border-indigo-200 bg-white px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {syncZoho.isPending ? 'Fetching...' : 'Fetch Positions'}
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={() => {
+                setSyncError('')
+                syncZoho.mutate(undefined, {
+                  onError: () => {
+                    setSyncError('Failed to sync positions from Zoho.')
+                  }
+                })
+              }}
+              disabled={syncZoho.isPending}
+              className="rounded-lg border border-indigo-200 bg-white px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {syncZoho.isPending ? (
+                <div className="flex items-center gap-2">
+                  <svg className="h-4 w-4 animate-spin text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Fetching...
+                </div>
+              ) : (
+                'Fetch Positions'
+              )}
+            </button>
+            {syncError && <span className="text-xs text-red-500">{syncError}</span>}
+          </div>
           <button
             onClick={() => setUploadOpen(true)}
             className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 transition-colors"
@@ -113,11 +124,33 @@ export default function PositionsPage() {
         </div>
       </div>
 
+      {/* Search Bar */}
+      <div className="mb-6">
+        <input
+          type="text"
+          placeholder="Search positions by title or department..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full max-w-md rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        />
+      </div>
+
       {/* Table */}
-      {isLoading && <p className="text-gray-500 text-sm">Loading positions…</p>}
+      {isLoading && (
+        <div className="flex items-center gap-3 py-8 px-4 justify-center text-gray-500">
+          <svg className="h-6 w-6 animate-spin text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span className="text-sm font-medium">Loading positions…</span>
+        </div>
+      )}
       {isError && <p className="text-red-500 text-sm">Failed to load positions.</p>}
       {!isLoading && !isError && positions.length === 0 && (
         <p className="text-gray-400 text-sm">No positions yet. Upload a JD or create one manually.</p>
+      )}
+      {!isLoading && !isError && positions.length > 0 && filteredPositions.length === 0 && (
+        <p className="text-gray-400 text-sm">No positions match your search.</p>
       )}
 
       {positions.length > 0 && (
@@ -136,27 +169,45 @@ export default function PositionsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {positions.map((p) => (
-                <tr
-                  key={p.id}
-                  onClick={() => navigate(`/positions/${p.id}`)}
-                  className="cursor-pointer hover:bg-indigo-50 transition-colors"
-                >
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                    {p.title ?? <span className="italic text-gray-400">Processing…</span>}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{p.department ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={p.position_status} />
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 text-center">
-                    {p.candidates_required ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
-                    {new Date(p.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
+              {filteredPositions.map((p) => {
+                const isProcessing = p.status === 'EXTRACTED' || p.status === 'STRUCTURED'
+                if (isProcessing) {
+                  return (
+                    <tr key={p.id} className="animate-pulse bg-indigo-50/30">
+                      <td colSpan={5} className="px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <svg className="h-5 w-5 animate-spin text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span className="text-sm font-semibold text-indigo-700">Fetching Job.....</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                }
+                return (
+                  <tr
+                    key={p.id}
+                    onClick={() => navigate(`/positions/${p.id}`)}
+                    className="cursor-pointer hover:bg-indigo-50 transition-colors"
+                  >
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                      {p.title ?? <span className="italic text-gray-400">Processing…</span>}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{p.department ?? '—'}</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={p.position_status} />
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600 text-center">
+                      {p.candidates_required ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">
+                      {new Date(p.created_at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -226,60 +277,6 @@ export default function PositionsPage() {
         </div>
       )}
 
-      {/* Toast Notification */}
-      {toast && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/5 p-4 animate-fade-in">
-          <div className="w-full max-w-md rounded-xl border border-indigo-200 bg-white p-6 shadow-2xl relative">
-            <button
-              onClick={() => setToast(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-indigo-600 transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            
-            {toast.data ? (
-              <div>
-                <h3 className="text-lg font-bold text-indigo-700 mb-3 flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Sync Complete
-                </h3>
-                
-                {toast.data.added === 0 && toast.data.updated === 0 && (
-                  <p className="text-gray-600 text-sm mt-2 font-medium">No new changes found in Zoho since the last sync.</p>
-                )}
-                
-                {toast.data.added > 0 && (
-                  <div className="mt-3">
-                    <p className="font-semibold text-gray-800 text-sm">Added {toast.data.added} new job(s):</p>
-                    <ul className="list-disc pl-5 mt-1.5 text-sm text-gray-600 space-y-1">
-                      {toast.data.added_titles.map((t, i) => <li key={i}>{t}</li>)}
-                    </ul>
-                  </div>
-                )}
-                
-                {toast.data.updated > 0 && (
-                  <div className="mt-4">
-                    <p className="font-semibold text-gray-800 text-sm">Updated {toast.data.updated} existing job(s):</p>
-                    <ul className="list-disc pl-5 mt-1.5 text-sm text-gray-600 space-y-1">
-                      {toast.data.updated_titles.map((t, i) => <li key={i}>{t}</li>)}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <span className={`font-medium ${toast.type === 'error' ? 'text-red-600' : 'text-indigo-600'}`}>
-                  {toast.message}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -14,6 +14,7 @@ class SubdomainAssignment(BaseModel):
 class DomainClassification(BaseModel):
     """LLM output for domain/subdomain assignment."""
 
+    reasoning: str
     domain_code: str
     domain_label: str
     subdomains: list[SubdomainAssignment] = Field(default_factory=list)

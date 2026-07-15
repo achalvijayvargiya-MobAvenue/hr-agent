@@ -36,7 +36,7 @@ from hr_agent.modules.matching.requirement_fit_service import evaluate_requireme
 
 logger = logging.getLogger(__name__)
 
-PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
+PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
 
 
 def _load_prompt(filename: str) -> str:

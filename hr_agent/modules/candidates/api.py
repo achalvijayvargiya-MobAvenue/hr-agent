@@ -19,6 +19,7 @@ from hr_agent.core.deps import (
     get_domain_classification_service,
     get_embedding_service,
     get_extraction_service,
+    get_pool_service,
 )
 from hr_agent.core.errors import NotFoundError
 from hr_agent.core.services.pdf_service import PDFExtractionError
@@ -196,6 +197,14 @@ def _process_import(
             )
             apply_domain_to_candidate(candidate, classification)
             db.flush()
+            
+            try:
+                from hr_agent.core.deps import get_pool_service
+                pool_svc = get_pool_service()
+                pool_svc.sync_candidate_across_pools(db, email)
+            except Exception as e:
+                logger.error("[BG:CV] Failed to sync candidate %s across pools: %s", email, e)
+
         except DomainClassificationError as exc:
             logger.warning("[BG:CV] Domain classification failed for %s: %s", email, exc)
         except Exception as exc:
@@ -495,6 +504,14 @@ def classify_candidate_domain(
         apply_domain_to_candidate(candidate, classification)
         db.commit()
         db.refresh(candidate)
+        
+        try:
+            from hr_agent.core.deps import get_pool_service
+            pool_svc = get_pool_service()
+            pool_svc.sync_candidate_across_pools(db, candidate.email)
+        except Exception as e:
+            logger.error("Failed to sync pools for candidate %s: %s", candidate.email, e)
+            
     except DomainClassificationError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -525,6 +542,13 @@ def update_candidate_domain(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     db.commit()
     db.refresh(candidate)
+    
+    try:
+        from hr_agent.core.deps import get_pool_service
+        pool_svc = get_pool_service()
+        pool_svc.sync_candidate_across_pools(db, candidate.email)
+    except Exception as e:
+        logger.error("Failed to sync pools for candidate %s: %s", candidate.email, e)
 
     log = (
         db.query(ProcessingLog)

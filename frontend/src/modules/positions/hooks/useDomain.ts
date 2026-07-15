@@ -44,6 +44,7 @@ export function useClassifyJobDomain() {
     },
     onSuccess: (_data, jobId) => {
       queryClient.invalidateQueries({ queryKey: ['position', jobId] })
+      queryClient.invalidateQueries({ queryKey: ['job-pool', jobId] })
     },
   })
 }
@@ -57,6 +58,7 @@ export function useUpdateJobDomain() {
     },
     onSuccess: (_data, { jobId }) => {
       queryClient.invalidateQueries({ queryKey: ['position', jobId] })
+      queryClient.invalidateQueries({ queryKey: ['job-pool', jobId] })
     },
   })
 }

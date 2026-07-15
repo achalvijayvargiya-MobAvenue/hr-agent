@@ -43,6 +43,13 @@ export interface Candidate {
   source_name: string
   status: string
   has_cv: boolean
+  domain_code?: string
+  domain_label?: string
+  subdomain_codes?: string[]
+  subdomain_labels?: string[]
+  domain_confidence?: number
+  domain_source?: string
+  domain_evidence?: string[]
   created_at: string
 }
 
@@ -192,6 +199,37 @@ export function useDeleteCandidate() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['candidates'] })
+    },
+  })
+}
+
+export interface DomainUpdateBody {
+  domain_code: string
+  subdomain_codes: string[]
+}
+
+export function useClassifyCandidateDomain() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (email: string) => {
+      const { data } = await api.post(`/candidates/${encodeURIComponent(email)}/classify-domain`)
+      return data
+    },
+    onSuccess: (_data, email) => {
+      queryClient.invalidateQueries({ queryKey: ['candidate', email] })
+    },
+  })
+}
+
+export function useUpdateCandidateDomain() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ email, body }: { email: string; body: DomainUpdateBody }) => {
+      const { data } = await api.put(`/candidates/${encodeURIComponent(email)}/domain`, body)
+      return data
+    },
+    onSuccess: (_data, { email }) => {
+      queryClient.invalidateQueries({ queryKey: ['candidate', email] })
     },
   })
 }
