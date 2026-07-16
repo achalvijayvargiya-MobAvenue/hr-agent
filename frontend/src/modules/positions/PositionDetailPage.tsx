@@ -11,10 +11,11 @@ import {
 import HardChecksPanel from './HardChecksPanel'
 import DomainPanel from './DomainPanel'
 import CandidatePoolPanel from './CandidatePoolPanel'
+import { Select } from '../../components/ui/Select'
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-  OPEN: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  OPEN: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
   CLOSED: 'bg-zinc-800 text-zinc-400 border-zinc-700',
 }
 
@@ -29,7 +30,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-colors'
+  'w-full rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 transition-colors'
 const labelClass = 'block text-sm font-medium text-zinc-400 mb-1'
 
 export default function PositionDetailPage() {
@@ -157,7 +158,7 @@ export default function PositionDetailPage() {
           <button
             onClick={handleSave}
             disabled={isBusy}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-900/50 hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+            className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-orange-900/50 hover:bg-orange-500 disabled:opacity-50 transition-colors"
           >
             {update.isPending ? 'Saving…' : 'Save Changes'}
           </button>
@@ -165,7 +166,7 @@ export default function PositionDetailPage() {
             <button
               onClick={handleApprove}
               disabled={isBusy}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-900/50 hover:bg-emerald-500 disabled:opacity-50 transition-colors"
+              className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-orange-900/50 hover:bg-orange-500 disabled:opacity-50 transition-colors"
             >
               {approve.isPending ? 'Approving…' : 'Approve & Open'}
             </button>
@@ -181,7 +182,7 @@ export default function PositionDetailPage() {
       </div>
 
       {saveMessage && (
-        <p className="mb-4 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 animate-slide-up">
+        <p className="mb-4 text-sm text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded-lg px-3 py-2 animate-slide-up">
           {saveMessage}
         </p>
       )}
@@ -192,7 +193,7 @@ export default function PositionDetailPage() {
       )}
 
       {/* Position fields */}
-      <div className="glass-panel rounded-xl p-6 space-y-5 animate-slide-up animate-stagger-1">
+      <div className="glass-panel rounded-xl p-6 space-y-5 animate-slide-up animate-stagger-1 relative z-40">
         <h2 className="text-base font-semibold text-zinc-100 border-b border-zinc-800 pb-2">
           Position Details
         </h2>
@@ -200,15 +201,12 @@ export default function PositionDetailPage() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Status</label>
-            <select
+            <Select
               value={positionStatus}
-              onChange={(e) => setPositionStatus(e.target.value)}
-              className={inputClass}
-            >
-              {['DRAFT', 'OPEN', 'CLOSED'].map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
+              onChange={setPositionStatus}
+              options={['DRAFT', 'OPEN', 'CLOSED'].map(s => ({ label: s, value: s }))}
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2.5 transition-colors"
+            />
           </div>
           <div>
             <label className={labelClass}>Candidates Required</label>
@@ -256,21 +254,27 @@ export default function PositionDetailPage() {
           </div>
           <div>
             <label className={labelClass}>Employment Type</label>
-            <select value={employmentType} onChange={(e) => setEmploymentType(e.target.value)} className={inputClass}>
-              <option value="">Select…</option>
-              {['Full-time', 'Part-time', 'Contract', 'Internship', 'Freelance'].map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+            <Select
+              value={employmentType}
+              onChange={setEmploymentType}
+              options={[
+                { label: 'Select…', value: '' },
+                ...['Full-time', 'Part-time', 'Contract', 'Internship', 'Freelance'].map((t) => ({ label: t, value: t }))
+              ]}
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2.5 transition-colors"
+            />
           </div>
           <div>
             <label className={labelClass}>Seniority Level</label>
-            <select value={seniorityLevel} onChange={(e) => setSeniorityLevel(e.target.value)} className={inputClass}>
-              <option value="">Select…</option>
-              {['Junior', 'Mid', 'Senior', 'Lead', 'Principal', 'Staff', 'Manager', 'Director'].map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
+            <Select
+              value={seniorityLevel}
+              onChange={setSeniorityLevel}
+              options={[
+                { label: 'Select…', value: '' },
+                ...['Junior', 'Mid', 'Senior', 'Lead', 'Principal', 'Staff', 'Manager', 'Director'].map((s) => ({ label: s, value: s }))
+              ]}
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2.5 transition-colors"
+            />
           </div>
         </div>
 

@@ -15,9 +15,10 @@ import {
   type CandidateImport,
 } from './hooks/useSources'
 import { usePositions } from '../positions/hooks/usePositions'
+import { Select } from '../../components/ui/Select'
 
 const SOURCE_STYLES: Record<string, string> = {
-  local_kb: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+  local_kb: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
   github: 'bg-zinc-800 text-zinc-300 border-zinc-700',
 }
 
@@ -74,7 +75,7 @@ function ConflictCard({
         <button
           onClick={() => onResolve(conflict.import_id, 'update')}
           disabled={resolving}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 disabled:opacity-60 transition-colors"
+          className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-500 disabled:opacity-60 transition-colors"
         >
           Update existing
         </button>
@@ -154,23 +155,33 @@ export default function CandidatesPage() {
   const fetchCandidates = useFetchCandidates()
   const [isFetchModalOpen, setIsFetchModalOpen] = useState(false)
   const [selectedPositionsForFetch, setSelectedPositionsForFetch] = useState<Set<string>>(new Set())
+  const [fetchMessage, setFetchMessage] = useState<string | null>(null)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [candidateToDelete, setCandidateToDelete] = useState<{email: string, name: string | null} | null>(null)
 
   function handleFetchClick() {
+    setFetchError(null)
+    setFetchMessage(null)
     setIsFetchModalOpen(true)
   }
 
   async function handleFetchSubmit() {
+    setFetchError(null)
+    setFetchMessage(null)
     if (selectedPositionsForFetch.size === 0) {
-      alert("Please select at least one position.")
+      setFetchError("Please select at least one position.")
       return
     }
     const promises = Array.from(selectedPositionsForFetch).map(id => fetchCandidates.mutateAsync(id))
     try {
       await Promise.all(promises)
-      alert("Candidates fetch triggered successfully for selected positions.")
-      setIsFetchModalOpen(false)
+      setFetchMessage("Candidates fetch triggered successfully for selected positions.")
+      setTimeout(() => {
+        setIsFetchModalOpen(false)
+        setFetchMessage(null)
+      }, 2000)
     } catch (err) {
-      alert("Error triggering fetch for some positions.")
+      setFetchError("Error triggering fetch for some positions.")
     }
   }
 
@@ -191,9 +202,14 @@ export default function CandidatesPage() {
 
   function handleDelete(e: React.MouseEvent, email: string, candidateName: string | null) {
     e.stopPropagation()
-    const label = candidateName ?? email
-    if (!window.confirm(`Delete ${label} permanently? This cannot be undone.`)) return
-    deleteCandidate.mutate(email)
+    setCandidateToDelete({ email, name: candidateName })
+  }
+
+  function confirmDelete() {
+    if (candidateToDelete) {
+      deleteCandidate.mutate(candidateToDelete.email)
+      setCandidateToDelete(null)
+    }
   }
 
   function handleResolve(importId: string, action: 'update' | 'keep') {
@@ -269,8 +285,11 @@ export default function CandidatesPage() {
     <div className="animate-fade-in w-full max-w-[1400px] mx-auto min-w-0">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-zinc-100">Candidates</h1>
+          <span className="inline-flex items-center rounded-md bg-zinc-800 px-2 py-1 text-xs font-medium text-zinc-300 border border-zinc-700">
+            {filtered.length} candidate{filtered.length !== 1 ? 's' : ''}
+          </span>
           <input
             ref={fileInputRef}
             type="file"
@@ -280,12 +299,43 @@ export default function CandidatesPage() {
             onChange={handleFileChange}
           />
         </div>
-        <span className="text-sm text-zinc-500">{filtered.length} candidate{filtered.length !== 1 ? 's' : ''}</span>
+        <div className="flex gap-3">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-medium text-orange-400 hover:bg-orange-500/20 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+            </svg>
+            {uploading ? 'Uploading…' : 'Upload CV'}
+          </button>
+          <button
+            onClick={handleFetchClick}
+            className="flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-orange-900/50 hover:bg-orange-500 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+            </svg>
+            Fetch Candidates
+          </button>
+        </div>
       </div>
 
       {processingCount > 0 && (
-        <div className="mb-4 rounded-lg bg-blue-50 border border-blue-200 px-4 py-2 text-sm text-blue-700">
-          {processingCount} CV{processingCount !== 1 ? 's' : ''} processing in background…
+        <div className="mb-6 rounded-xl border border-orange-500/20 bg-orange-500/5 p-4 flex items-center gap-4 animate-pulse">
+          <div className="flex-shrink-0">
+            <svg className="h-5 w-5 animate-spin text-orange-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-orange-400">Processing Candidates</h3>
+            <p className="text-xs text-orange-400/80 mt-0.5">
+              {processingCount} candidate{processingCount !== 1 ? 's are' : ' is'} being processed in the background. They will appear here once ready.
+            </p>
+          </div>
         </div>
       )}
 
@@ -307,7 +357,7 @@ export default function CandidatesPage() {
 
       {conflicts.length > 0 && (
         <div className="mb-6 space-y-4">
-          <h2 className="text-sm font-semibold text-amber-900 uppercase tracking-wide">
+          <h2 className="text-sm font-semibold text-orange-900 uppercase tracking-wide">
             Duplicate emails — action required ({conflicts.length})
           </h2>
           {conflicts.map((conflict) => (
@@ -333,57 +383,45 @@ export default function CandidatesPage() {
       )}
 
       {/* Filter bar */}
-      <div className="glass-panel rounded-xl p-4 flex gap-3 mb-5 animate-slide-up animate-stagger-1">
-        <input
-          type="text"
-          placeholder="Search by name or email…"
-          value={nameSearch}
-          onChange={(e) => setNameSearch(e.target.value)}
-          className="rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 w-56 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
-        />
-        <select
+      <div className="glass-panel rounded-xl p-4 flex flex-wrap gap-4 mb-5 animate-slide-up animate-stagger-1 items-center relative z-40">
+        <div className="relative flex-1 min-w-[240px] max-w-md">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+            <svg className="h-5 w-5 text-zinc-500" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            placeholder="Search by name or email…"
+            value={nameSearch}
+            onChange={(e) => setNameSearch(e.target.value)}
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-950/50 pl-10 pr-4 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-orange-500 transition-colors"
+          />
+        </div>
+        <Select
           value={jobFilter}
-          onChange={(e) => setJobFilter(e.target.value)}
-          className="rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-48 truncate transition-colors"
-        >
-          <option value="">All positions</option>
-          {Array.from(
-            new Map(
-              positions
-                .filter((p) => p.title && p.title.trim() !== '' && p.title !== 'None' && p.title !== 'Unknown Title')
-                .map((p) => [p.title!.trim(), p])
-            ).values()
-          ).map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.title}
-            </option>
-          ))}
-        </select>
-        <select
+          onChange={setJobFilter}
+          options={[
+            { label: 'All positions', value: '' },
+            ...Array.from(
+              new Map(
+                positions
+                  .filter((p) => p.title && p.title.trim() !== '' && p.title !== 'None' && p.title !== 'Unknown Title')
+                  .map((p) => [p.title!.trim(), p])
+              ).values()
+            ).map((p) => ({ label: p.title as string, value: p.id }))
+          ]}
+          className="w-48 rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2.5 transition-colors"
+        />
+        <Select
           value={sourceFilter}
-          onChange={(e) => setSourceFilter(e.target.value)}
-          className="rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-40 transition-colors"
-        >
-          <option value="">All sources</option>
-          {sources.map((src) => (
-            <option key={src.name} value={src.name}>
-              {src.name.replace(/_/g, ' ')}
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={handleFetchClick}
-          className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm shadow-indigo-900/50 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-        >
-          Fetch Candidates
-        </button>
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="inline-flex items-center gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-sm font-medium text-indigo-400 shadow-sm hover:bg-indigo-500/20 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-        >
-          {uploading ? 'Uploading…' : 'Upload CV'}
-        </button>
+          onChange={setSourceFilter}
+          options={[
+            { label: 'All sources', value: '' },
+            ...sources.map((src) => ({ label: src.name.replace(/_/g, ' '), value: src.name }))
+          ]}
+          className="w-40 rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2.5 transition-colors"
+        />
       </div>
 
       {isLoading && <p className="text-zinc-500 text-sm glass-panel p-4 rounded-xl animate-slide-up animate-stagger-2">Loading candidates…</p>}
@@ -416,7 +454,7 @@ export default function CandidatesPage() {
                   onClick={() => navigate(`/candidates/${encodeURIComponent(c.email)}`)}
                   className="group cursor-pointer hover:bg-zinc-800/80 transition-colors"
                 >
-                  <td className="px-4 py-4 text-sm font-medium text-zinc-100 whitespace-nowrap group-hover:text-indigo-400 transition-colors">
+                  <td className="px-4 py-4 text-sm font-medium text-zinc-100 whitespace-nowrap group-hover:text-orange-400 transition-colors">
                     {c.name ?? <span className="italic text-zinc-500">Processing…</span>}
                   </td>
                   <td className="px-4 py-4 text-sm text-zinc-400 whitespace-nowrap">
@@ -457,7 +495,7 @@ export default function CandidatesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
           <div className="w-full max-w-md rounded-2xl glass-panel p-6 shadow-2xl animate-slide-up border-zinc-700">
             <div className="flex items-center gap-4 mb-6">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 shadow-inner">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 shadow-inner">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
                 </svg>
@@ -472,7 +510,7 @@ export default function CandidatesPage() {
               <label className="flex items-center gap-3 p-3 hover:bg-zinc-800/80 rounded-lg cursor-pointer border border-transparent hover:border-zinc-700 transition-all shadow-sm mb-2 group">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-zinc-900"
+                  className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-orange-500 focus:ring-orange-500 focus:ring-offset-zinc-900"
                   checked={positions.length > 0 && selectedPositionsForFetch.size === positions.length}
                   onChange={(e) => handleSelectAllPositions(e.target.checked)}
                 />
@@ -483,7 +521,7 @@ export default function CandidatesPage() {
                 <label key={p.id} className="flex items-center gap-3 p-3 hover:bg-zinc-800/50 rounded-lg cursor-pointer border border-transparent hover:border-zinc-700 hover:shadow-sm transition-all group">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-zinc-900"
+                    className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-orange-500 focus:ring-orange-500 focus:ring-offset-zinc-900"
                     checked={selectedPositionsForFetch.has(p.id)}
                     onChange={(e) => handleSelectPosition(p.id, e.target.checked)}
                   />
@@ -495,6 +533,13 @@ export default function CandidatesPage() {
               )}
             </div>
 
+            {fetchError && (
+              <p className="text-sm text-red-400 mb-3 px-1">{fetchError}</p>
+            )}
+            {fetchMessage && (
+              <p className="text-sm text-green-400 mb-3 px-1">{fetchMessage}</p>
+            )}
+
             <div className="flex justify-end gap-3 mt-4">
               <button
                 onClick={() => setIsFetchModalOpen(false)}
@@ -505,7 +550,7 @@ export default function CandidatesPage() {
               <button
                 onClick={handleFetchSubmit}
                 disabled={selectedPositionsForFetch.size === 0 || fetchCandidates.isPending}
-                className="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="flex items-center gap-2 rounded-lg bg-orange-600 px-5 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {fetchCandidates.isPending && (
                   <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -514,6 +559,44 @@ export default function CandidatesPage() {
                   </svg>
                 )}
                 {fetchCandidates.isPending ? 'Fetching...' : 'Start Fetch'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {candidateToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl glass-panel p-6 shadow-2xl animate-slide-up border-zinc-700">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 border border-red-500/20 text-red-400 shadow-inner">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-zinc-100">Delete Candidate</h2>
+                <p className="text-sm text-zinc-400">This action cannot be undone.</p>
+              </div>
+            </div>
+            
+            <p className="text-zinc-300 text-sm mb-8 px-1">
+              Are you sure you want to permanently delete <span className="font-semibold text-zinc-100">{candidateToDelete.name ?? candidateToDelete.email}</span>?
+            </p>
+
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => setCandidateToDelete(null)}
+                className="rounded-lg px-4 py-2.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 border border-zinc-700 bg-transparent transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleteCandidate.isPending}
+                className="flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {deleteCandidate.isPending ? 'Deleting...' : 'Delete Permanently'}
               </button>
             </div>
           </div>

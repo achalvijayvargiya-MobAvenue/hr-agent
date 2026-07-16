@@ -58,7 +58,7 @@ function CheckboxGroup({
               key={option}
               className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                 active
-                  ? 'border-amber-500/50 bg-amber-500/10 text-amber-400'
+                  ? 'border-orange-500/50 bg-orange-500/10 text-orange-400'
                   : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
               }`}
             >
@@ -66,7 +66,7 @@ function CheckboxGroup({
                 type="checkbox"
                 checked={active}
                 onChange={() => toggle(option)}
-                className="rounded border-zinc-600 bg-zinc-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-zinc-900"
+                className="rounded border-zinc-600 bg-zinc-900 text-orange-500 focus:ring-orange-500 focus:ring-offset-zinc-900"
               />
               {option}
             </label>
@@ -149,9 +149,9 @@ export default function HardChecksPanel({
     (updateHardChecks.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail
 
   return (
-    <div className="mt-6 glass-panel rounded-xl border border-amber-500/20 p-6 space-y-5 animate-slide-up animate-stagger-2">
+    <div className="mt-6 glass-panel rounded-xl border border-orange-500/20 p-6 space-y-5 animate-slide-up animate-stagger-2">
       <div>
-        <h2 className="text-base font-semibold text-amber-500">Hard Checks (Matching Filters)</h2>
+        <h2 className="text-base font-semibold text-orange-500">Hard Checks (Matching Filters)</h2>
         <p className="text-sm text-zinc-400 mt-1">
           Candidates that fail a hard check are eliminated before scoring. Experience min/max from
           the position details is always enforced
@@ -221,7 +221,7 @@ export default function HardChecksPanel({
         </div>
       )}
 
-      <div className="space-y-2 border-t border-amber-500/20 pt-4">
+      <div className="space-y-2 border-t border-orange-500/20 pt-4">
         <p className={labelClass}>Exact-match filters</p>
         {seniorityLevel && (
           <label className="flex items-center gap-2 text-sm text-zinc-300 group">
@@ -229,7 +229,7 @@ export default function HardChecksPanel({
               type="checkbox"
               checked={hcSeniority}
               onChange={(e) => setHcSeniority(e.target.checked)}
-              className="rounded border-zinc-600 bg-zinc-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-zinc-900"
+              className="rounded border-zinc-600 bg-zinc-900 text-orange-500 focus:ring-orange-500 focus:ring-offset-zinc-900"
             />
             Seniority must be: <span className="font-medium text-zinc-100">{seniorityLevel}</span>
           </label>
@@ -240,7 +240,7 @@ export default function HardChecksPanel({
               type="checkbox"
               checked={hcRole}
               onChange={(e) => setHcRole(e.target.checked)}
-              className="rounded border-zinc-600 bg-zinc-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-zinc-900"
+              className="rounded border-zinc-600 bg-zinc-900 text-orange-500 focus:ring-orange-500 focus:ring-offset-zinc-900"
             />
             Role must match: <span className="font-medium text-zinc-100">{normalizedRole}</span>
           </label>
@@ -251,7 +251,7 @@ export default function HardChecksPanel({
               type="checkbox"
               checked={hcIndustry}
               onChange={(e) => setHcIndustry(e.target.checked)}
-              className="rounded border-zinc-600 bg-zinc-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-zinc-900"
+              className="rounded border-zinc-600 bg-zinc-900 text-orange-500 focus:ring-orange-500 focus:ring-offset-zinc-900"
             />
             Industry must include: <span className="font-medium text-zinc-100">{industry}</span>
           </label>
@@ -262,7 +262,7 @@ export default function HardChecksPanel({
               type="checkbox"
               checked={hcLocation}
               onChange={(e) => setHcLocation(e.target.checked)}
-              className="rounded border-zinc-600 bg-zinc-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-zinc-900"
+              className="rounded border-zinc-600 bg-zinc-900 text-orange-500 focus:ring-orange-500 focus:ring-offset-zinc-900"
             />
             Location must match: <span className="font-medium text-zinc-100">{location}</span>
           </label>
@@ -270,7 +270,7 @@ export default function HardChecksPanel({
       </div>
 
       {message && (
-        <p className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 animate-slide-up">
+        <p className="text-sm text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded-lg px-3 py-2 animate-slide-up">
           {message}
         </p>
       )}
@@ -284,7 +284,7 @@ export default function HardChecksPanel({
         <button
           onClick={handleSave}
           disabled={updateHardChecks.isPending}
-          className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-amber-900/50 hover:bg-amber-500 disabled:opacity-50 transition-colors"
+          className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-orange-900/50 hover:bg-orange-500 disabled:opacity-50 transition-colors"
         >
           {updateHardChecks.isPending ? 'Saving…' : 'Save Hard Checks'}
         </button>

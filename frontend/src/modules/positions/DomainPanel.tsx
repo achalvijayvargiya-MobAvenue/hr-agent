@@ -6,6 +6,7 @@ import {
   type DomainUpdateBody,
 } from './hooks/useDomain'
 import type { Position } from './hooks/usePositions'
+import { Select } from '../../components/ui/Select'
 
 interface Props {
   positionId: string
@@ -60,10 +61,10 @@ export default function DomainPanel({ positionId, position }: Props) {
     (updateDomain.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail
 
   return (
-    <div className="mt-6 glass-panel rounded-xl border border-violet-500/20 p-6 space-y-5 animate-slide-up animate-stagger-3">
+    <div className="mt-6 glass-panel rounded-xl border border-orange-500/20 p-6 space-y-5 animate-slide-up animate-stagger-3 relative z-30">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold text-violet-400">Domain &amp; Subdomain</h2>
+          <h2 className="text-base font-semibold text-orange-400">Domain &amp; Subdomain</h2>
           <p className="text-sm text-zinc-400 mt-1">
             Classify this position into a professional domain for candidate pool grouping.
             {position.domain_source && (
@@ -80,7 +81,7 @@ export default function DomainPanel({ positionId, position }: Props) {
         <button
           onClick={handleClassify}
           disabled={busy || !position.normalized_role}
-          className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-sm font-medium text-violet-400 hover:bg-violet-500/20 hover:text-violet-300 disabled:opacity-50 transition-colors"
+          className="rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-1.5 text-sm font-medium text-orange-400 hover:bg-orange-500/20 hover:text-orange-300 disabled:opacity-50 transition-colors"
         >
           {classify.isPending ? 'Classifying…' : 'Auto-classify'}
         </button>
@@ -103,21 +104,18 @@ export default function DomainPanel({ positionId, position }: Props) {
         <>
           <div>
             <label className={labelClass}>Primary domain</label>
-            <select
+            <Select
               value={domainCode}
-              onChange={(e) => {
-                setDomainCode(e.target.value)
+              onChange={(value) => {
+                setDomainCode(value)
                 setSubdomainCodes([])
               }}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors"
-            >
-              <option value="">— Select domain —</option>
-              {taxonomy?.domains.map((d) => (
-                <option key={d.code} value={d.code}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
+              options={[
+                { label: '— Select domain —', value: '' },
+                ...(taxonomy?.domains.map((d) => ({ label: d.label, value: d.code })) ?? [])
+              ]}
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2.5 transition-colors"
+            />
             {selectedDomain?.description && (
               <p className="text-xs text-zinc-500 mt-1">{selectedDomain.description}</p>
             )}
@@ -134,7 +132,7 @@ export default function DomainPanel({ positionId, position }: Props) {
                       key={sub.code}
                       className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                         active
-                          ? 'border-violet-500/50 bg-violet-500/10 text-violet-400'
+                          ? 'border-orange-500/50 bg-orange-500/10 text-orange-400'
                           : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                       }`}
                     >
@@ -142,7 +140,7 @@ export default function DomainPanel({ positionId, position }: Props) {
                         type="checkbox"
                         checked={active}
                         onChange={() => toggleSubdomain(sub.code)}
-                        className="rounded border-zinc-600 bg-zinc-900 text-violet-500 focus:ring-violet-500 focus:ring-offset-zinc-900"
+                        className="rounded border-zinc-600 bg-zinc-900 text-orange-500 focus:ring-orange-500 focus:ring-offset-zinc-900"
                       />
                       {sub.label}
                     </label>
@@ -155,7 +153,7 @@ export default function DomainPanel({ positionId, position }: Props) {
       )}
 
       {message && (
-        <p className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 animate-slide-up">
+        <p className="text-sm text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded-lg px-3 py-2 animate-slide-up">
           {message}
         </p>
       )}
@@ -169,7 +167,7 @@ export default function DomainPanel({ positionId, position }: Props) {
         <button
           onClick={handleSave}
           disabled={busy || !domainCode || subdomainCodes.length === 0}
-          className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-violet-900/50 hover:bg-violet-500 disabled:opacity-50 transition-colors"
+          className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-orange-900/50 hover:bg-orange-500 disabled:opacity-50 transition-colors"
         >
           {updateDomain.isPending ? 'Saving…' : 'Save Domain'}
         </button>

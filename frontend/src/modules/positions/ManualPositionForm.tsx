@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import TagInput from '../../components/TagInput'
 import { useCreateManualPosition, type ManualPositionBody } from './hooks/usePositions'
+import { Select } from '../../components/ui/Select'
 
 interface Props {
   onClose: () => void
@@ -46,8 +47,8 @@ export default function ManualPositionForm({ onClose }: Props) {
   }
 
   const inputClass =
-    'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
-  const labelClass = 'block text-sm font-medium text-gray-700 mb-1'
+    'w-full rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 transition-colors'
+  const labelClass = 'block text-sm font-medium text-zinc-400 mb-1'
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -89,21 +90,27 @@ export default function ManualPositionForm({ onClose }: Props) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Employment Type</label>
-          <select value={employmentType} onChange={(e) => setEmploymentType(e.target.value)} className={inputClass}>
-            <option value="">Select…</option>
-            {['Full-time', 'Part-time', 'Contract', 'Internship', 'Freelance'].map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
+          <Select
+            value={employmentType}
+            onChange={setEmploymentType}
+            options={[
+              { label: 'Select…', value: '' },
+              ...['Full-time', 'Part-time', 'Contract', 'Internship', 'Freelance'].map((t) => ({ label: t, value: t }))
+            ]}
+            className={inputClass}
+          />
         </div>
         <div>
           <label className={labelClass}>Seniority Level</label>
-          <select value={seniorityLevel} onChange={(e) => setSeniorityLevel(e.target.value)} className={inputClass}>
-            <option value="">Select…</option>
-            {['Junior', 'Mid', 'Senior', 'Lead', 'Principal', 'Staff', 'Manager', 'Director'].map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+          <Select
+            value={seniorityLevel}
+            onChange={setSeniorityLevel}
+            options={[
+              { label: 'Select…', value: '' },
+              ...['Junior', 'Mid', 'Senior', 'Lead', 'Principal', 'Staff', 'Manager', 'Director'].map((s) => ({ label: s, value: s }))
+            ]}
+            className={inputClass}
+          />
         </div>
       </div>
 
@@ -159,14 +166,14 @@ export default function ManualPositionForm({ onClose }: Props) {
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+          className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={create.isPending}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-50"
         >
           {create.isPending ? 'Creating…' : 'Create Position'}
         </button>

@@ -10,7 +10,7 @@ export default function Layout({ children }: Props) {
       <TopNav />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Subtle abstract background gradient */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-zinc-950 to-zinc-950 z-0 pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-orange-900/20 via-zinc-950 to-zinc-950 z-0 pointer-events-none" />
         
         <Sidebar />
         

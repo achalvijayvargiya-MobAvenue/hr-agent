@@ -10,12 +10,13 @@ import {
   useInviteUser,
   type AppUser,
 } from './hooks/useUsers'
+import { Select } from '../../components/ui/Select'
 
 // ── Role badge ──────────────────────────────────────────────────────────────────
 
 const ROLE_COLORS: Record<string, string> = {
   admin: 'bg-red-500/10 text-red-400 border-red-500/20',
-  recruiter: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+  recruiter: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
   viewer: 'bg-zinc-800 text-zinc-400 border-zinc-700',
 }
 
@@ -86,7 +87,7 @@ function AddRoleDropdown({ user, availableRoles, onAdd, isAdding }: AddRoleDropd
               key={r}
               type="button"
               onClick={() => { onAdd(r); setOpen(false) }}
-              className="w-full text-left px-3 py-1.5 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-indigo-400 transition-colors"
+              className="w-full text-left px-3 py-1.5 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-orange-400 transition-colors"
             >
               {r}
             </button>
@@ -113,8 +114,8 @@ function ActiveToggle({ userId, isActive }: ActiveToggleProps) {
       aria-checked={isActive}
       onClick={() => updateUser.mutate({ id: userId, body: { is_active: !isActive } })}
       disabled={updateUser.isPending}
-      className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 focus:ring-offset-zinc-950 disabled:opacity-50 cursor-pointer ${
-        isActive ? 'bg-indigo-600' : 'bg-zinc-700'
+      className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-1 focus:ring-offset-zinc-950 disabled:opacity-50 cursor-pointer ${
+        isActive ? 'bg-orange-600' : 'bg-zinc-700'
       }`}
     >
       <span
@@ -158,7 +159,7 @@ function InviteModal({ availableRoles, onClose }: InviteModalProps) {
   }
 
   const inputClass =
-    'w-full rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors'
+    'w-full rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-orange-500 transition-colors'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
@@ -204,14 +205,15 @@ function InviteModal({ availableRoles, onClose }: InviteModalProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-zinc-400 mb-1">Assign Role</label>
-            <select value={role} onChange={(e) => setRole(e.target.value)} className={inputClass}>
-              <option value="">— None —</option>
-              {availableRoles.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
+            <Select
+              value={role}
+              onChange={setRole}
+              options={[
+                { label: '— None —', value: '' },
+                ...availableRoles.map((r) => ({ label: r, value: r }))
+              ]}
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2.5 transition-colors"
+            />
           </div>
 
           {invite.isError && (
@@ -232,7 +234,7 @@ function InviteModal({ availableRoles, onClose }: InviteModalProps) {
             <button
               type="submit"
               disabled={invite.isPending || assignRole.isPending}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+              className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-lg hover:bg-orange-500 disabled:opacity-50 transition-colors"
             >
               {invite.isPending ? 'Creating…' : 'Invite User'}
             </button>
@@ -270,7 +272,7 @@ export default function UsersPage() {
         <h1 className="text-2xl font-bold text-zinc-100">User Management</h1>
         <button
           onClick={() => setInviteOpen(true)}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-900/50 hover:bg-indigo-500 transition-colors"
+          className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-orange-900/50 hover:bg-orange-500 transition-colors"
         >
           + Invite User
         </button>
@@ -298,7 +300,7 @@ export default function UsersPage() {
               {users.map((user) => (
                 <tr key={user.id} className="hover:bg-zinc-800/80 transition-colors group">
                   {/* Email */}
-                  <td className="px-4 py-4 text-sm font-medium text-zinc-100 group-hover:text-indigo-400 transition-colors">{user.email}</td>
+                  <td className="px-4 py-4 text-sm font-medium text-zinc-100 group-hover:text-orange-400 transition-colors">{user.email}</td>
 
                   {/* Full name */}
                   <td className="px-4 py-4 text-sm text-zinc-400">

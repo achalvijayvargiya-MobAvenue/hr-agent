@@ -76,11 +76,17 @@ export default function PositionsPage() {
     )
   })
 
+  const processingPositions = filteredPositions.filter(p => p.status === 'EXTRACTED' || p.status === 'STRUCTURED')
+  const readyPositions = filteredPositions.filter(p => p.status !== 'EXTRACTED' && p.status !== 'STRUCTURED')
+
   return (
     <div className="animate-fade-in w-full max-w-[1400px] mx-auto min-w-0">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-zinc-100">Open Positions</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-100">Open Positions</h1>
+          <p className="text-sm text-zinc-400 mt-1">Manage and track open job requisitions</p>
+        </div>
         <div className="flex gap-3">
           <div className="flex flex-col items-end gap-1">
             <button
@@ -93,52 +99,70 @@ export default function PositionsPage() {
                 })
               }}
               disabled={syncZoho.isPending}
-              className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-sm font-medium text-indigo-400 hover:bg-indigo-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-medium text-orange-400 hover:bg-orange-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {syncZoho.isPending ? (
                 <div className="flex items-center gap-2">
-                  <svg className="h-4 w-4 animate-spin text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="h-4 w-4 animate-spin text-orange-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   Fetching...
                 </div>
               ) : (
-                'Fetch Positions'
+                <div className="flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                  </svg>
+                  Fetch Positions
+                </div>
               )}
             </button>
             {syncError && <span className="text-xs text-red-400">{syncError}</span>}
           </div>
           <button
             onClick={() => setUploadOpen(true)}
-            className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-sm font-medium text-indigo-400 hover:bg-indigo-500/20 transition-colors shadow-sm"
+            className="flex items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-medium text-orange-400 hover:bg-orange-500/20 transition-colors shadow-sm"
           >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+            </svg>
             Upload JD
           </button>
           <button
             onClick={() => setSlideOverOpen(true)}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-900/50 hover:bg-indigo-500 transition-colors"
+            className="flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-orange-900/50 hover:bg-orange-500 transition-colors"
           >
-            + Create Manual
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Create Manual
           </button>
         </div>
       </div>
 
       {/* Search Bar */}
       <div className="mb-6 glass-panel rounded-xl p-4 animate-slide-up animate-stagger-1">
-        <input
-          type="text"
-          placeholder="Search positions by title or department..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full max-w-md rounded-lg border border-zinc-700 bg-zinc-950/50 px-4 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
-        />
+        <div className="relative w-full max-w-md">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+            <svg className="h-5 w-5 text-zinc-500" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            placeholder="Search positions by title or department..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-950/50 pl-10 pr-4 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 transition-colors"
+          />
+        </div>
       </div>
 
       {/* Table */}
       {isLoading && (
         <div className="flex items-center gap-3 py-8 px-4 justify-center text-zinc-500 glass-panel rounded-xl animate-slide-up animate-stagger-2">
-          <svg className="h-6 w-6 animate-spin text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <svg className="h-6 w-6 animate-spin text-orange-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
@@ -169,30 +193,29 @@ export default function PositionsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800 bg-zinc-950/30">
-              {filteredPositions.map((p) => {
-                const isProcessing = p.status === 'EXTRACTED' || p.status === 'STRUCTURED'
-                if (isProcessing) {
-                  return (
-                    <tr key={p.id} className="animate-pulse bg-indigo-500/5">
-                      <td colSpan={5} className="px-4 py-4">
-                        <div className="flex items-center gap-3">
-                          <svg className="h-5 w-5 animate-spin text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          <span className="text-sm font-semibold text-indigo-400">Fetching Job.....</span>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                }
+              {processingPositions.length > 0 && (
+                <tr className="animate-pulse bg-orange-500/5">
+                  <td colSpan={5} className="px-4 py-4">
+                    <div className="flex items-center gap-3">
+                      <svg className="h-5 w-5 animate-spin text-orange-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span className="text-sm font-semibold text-orange-400">
+                        {processingPositions.length === 1 ? 'Fetching 1 job...' : `Fetching ${processingPositions.length} jobs...`}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {readyPositions.map((p) => {
                 return (
                   <tr
                     key={p.id}
                     onClick={() => navigate(`/positions/${p.id}`)}
                     className="cursor-pointer hover:bg-zinc-800/80 transition-colors group"
                   >
-                    <td className="px-4 py-4 text-sm font-medium text-zinc-100 group-hover:text-indigo-400 transition-colors">
+                    <td className="px-4 py-4 text-sm font-medium text-zinc-100 group-hover:text-orange-400 transition-colors">
                       {p.title ?? <span className="italic text-zinc-500">Processing…</span>}
                     </td>
                     <td className="px-4 py-4 text-sm text-zinc-400">{p.department ?? '—'}</td>
@@ -226,7 +249,7 @@ export default function PositionsPage() {
                 type="file"
                 accept="application/pdf"
                 onChange={handleFileChange}
-                className="block w-full text-sm text-zinc-400 file:mr-4 file:rounded-lg file:border border-indigo-500/20 file:bg-indigo-500/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-indigo-400 hover:file:bg-indigo-500/20 transition-colors"
+                className="block w-full text-sm text-zinc-400 file:mr-4 file:rounded-lg file:border border-orange-500/20 file:bg-orange-500/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-orange-400 hover:file:bg-orange-500/20 transition-colors"
               />
             </label>
 
@@ -247,7 +270,7 @@ export default function PositionsPage() {
               <button
                 disabled={!selectedFile || upload.isPending}
                 onClick={handleUpload}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-colors"
+                className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-colors"
               >
                 {upload.isPending ? 'Uploading…' : 'Upload'}
               </button>

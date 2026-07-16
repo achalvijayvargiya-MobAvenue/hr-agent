@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useSources, useFetchCandidates } from '../candidates/hooks/useSources'
 import { usePositions } from '../positions/hooks/usePositions'
+import { Select } from '../../components/ui/Select'
 
 interface Toast {
   message: string
@@ -55,7 +56,7 @@ export default function SourcesPage() {
         <h1 className="text-2xl font-bold text-zinc-100">Candidate Sources</h1>
         <button
           onClick={() => setModalOpen(true)}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-900/50 hover:bg-indigo-500 transition-colors"
+          className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-orange-900/50 hover:bg-orange-500 transition-colors"
         >
           Fetch for Position
         </button>
@@ -85,7 +86,7 @@ export default function SourcesPage() {
             style={{ animationDelay: `${(idx + 1) * 100}ms` }}
           >
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-zinc-100 group-hover:text-indigo-400 transition-colors">{source.display_name}</h2>
+              <h2 className="font-semibold text-zinc-100 group-hover:text-orange-400 transition-colors">{source.display_name}</h2>
               <div className="flex items-center gap-1.5 text-xs text-zinc-400">
                 <AvailabilityDot available={source.is_available} />
                 {source.is_available ? 'Available' : 'Unavailable'}
@@ -111,18 +112,18 @@ export default function SourcesPage() {
                 No open positions found. Approve a position first.
               </p>
             ) : (
-              <select
+              <Select
                 value={selectedPosition}
-                onChange={(e) => setSelectedPosition(e.target.value)}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 mb-4 transition-colors"
-              >
-                <option value="">— Choose a position —</option>
-                {positions.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.title ?? p.id} {p.department ? `(${p.department})` : ''}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedPosition}
+                options={[
+                  { label: '— Choose a position —', value: '' },
+                  ...positions.map((p) => ({
+                    label: `${p.title ?? p.id} ${p.department ? `(${p.department})` : ''}`.trim(),
+                    value: p.id
+                  }))
+                ]}
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2.5 mb-4 transition-colors"
+              />
             )}
 
             <div className="flex justify-end gap-3">
@@ -135,7 +136,7 @@ export default function SourcesPage() {
               <button
                 disabled={!selectedPosition || fetchCandidates.isPending}
                 onClick={handleFetch}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-lg hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {fetchCandidates.isPending ? 'Fetching…' : 'Fetch Candidates'}
               </button>

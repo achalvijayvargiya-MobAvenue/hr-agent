@@ -4,7 +4,7 @@ import api from '../../lib/api'
 import CandidateDomainPanel from './CandidateDomainPanel'
 
 const SOURCE_STYLES: Record<string, string> = {
-  local_kb: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+  local_kb: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
   github: 'bg-zinc-800 text-zinc-300 border-zinc-700',
 }
 
@@ -19,7 +19,7 @@ function SourceBadge({ source }: { source: string }) {
 
 function TagList({ items, color = 'indigo' }: { items: string[]; color?: string }) {
   const styles: Record<string, string> = {
-    indigo: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+    indigo: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
     purple: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
     gray: 'bg-zinc-800 text-zinc-400 border-zinc-700',
     teal: 'bg-teal-500/10 text-teal-400 border-teal-500/20',
@@ -179,8 +179,8 @@ export default function CandidateDetailPage() {
           <ol className="relative border-l border-zinc-700 space-y-5 ml-2">
             {employment.map((job, i) => (
               <li key={i} className="ml-5">
-                <span className="absolute -left-2 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-500/20 ring-4 ring-zinc-900">
-                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
+                <span className="absolute -left-2 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500/20 ring-4 ring-zinc-900">
+                  <span className="h-1.5 w-1.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
                 </span>
                 <p className="text-sm font-semibold text-zinc-100">{job.title ?? '—'}</p>
                 <p className="text-xs text-zinc-400">

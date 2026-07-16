@@ -5,7 +5,7 @@ import type { MatchEntry, MatchResponse, ScoreBreakdown } from './hooks/useMatch
 // ── Source badge ────────────────────────────────────────────────────────────────
 
 const SOURCE_STYLES: Record<string, string> = {
-  local_kb: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+  local_kb: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
   github: 'bg-zinc-800 text-zinc-300 border-zinc-700',
 }
 
@@ -36,42 +36,42 @@ function ScoreBar({ breakdown }: { breakdown: ScoreBreakdown }) {
     const rerPct = (rerankContrib / total) * 100
 
     return (
-      <div className="space-y-1">
-        <div className="flex h-3 rounded-full overflow-hidden gap-px bg-zinc-800">
+      <div className="space-y-2 mt-2">
+        <div className="flex h-3.5 w-full rounded-full overflow-hidden gap-0.5 bg-zinc-800/50">
           {fitPct > 0 && (
             <div
-              className="bg-emerald-500 transition-all shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+              className="bg-emerald-500 transition-all shadow-[0_0_8px_rgba(16,185,129,0.4)]"
               style={{ width: `${fitPct}%` }}
-              title={`Fit: ${(breakdown.requirement_fit_score ?? 0).toFixed(2)} × ${((breakdown.requirement_fit_weight ?? 0) * 100).toFixed(0)}%`}
+              title={`Requirement Fit: ${(breakdown.requirement_fit_score ?? 0).toFixed(2)}`}
             />
           )}
           {retPct > 0 && (
             <div
-              className="bg-sky-400 transition-all shadow-[0_0_8px_rgba(56,189,248,0.6)]"
+              className="bg-sky-400 transition-all shadow-[0_0_8px_rgba(56,189,248,0.4)]"
               style={{ width: `${retPct}%` }}
-              title={`Retrieval: ${(breakdown.vector_score ?? 0).toFixed(2)} × ${(breakdown.vector_weight * 100).toFixed(0)}%`}
+              title={`Semantic Match: ${(breakdown.vector_score ?? 0).toFixed(2)}`}
             />
           )}
           {rerPct > 0 && (
             <div
-              className="bg-violet-500 transition-all shadow-[0_0_8px_rgba(139,92,246,0.6)]"
+              className="bg-orange-500 transition-all shadow-[0_0_8px_rgba(249,115,22,0.4)]"
               style={{ width: `${rerPct}%` }}
-              title={`Rerank: ${(breakdown.rerank_score ?? 0).toFixed(2)} × ${((breakdown.rerank_weight ?? 0) * 100).toFixed(0)}%`}
+              title={`AI Assessment: ${(breakdown.rerank_score ?? 0).toFixed(2)}`}
             />
           )}
         </div>
-        <div className="flex gap-3 text-xs text-zinc-400">
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-2 h-2 rounded-sm bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.6)]" />
-            Fit {breakdown.requirement_fit_score != null ? breakdown.requirement_fit_score.toFixed(2) : '—'}
+        <div className="flex gap-4 text-xs font-medium text-zinc-400">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.6)]" />
+            Requirement Fit {breakdown.requirement_fit_score != null ? breakdown.requirement_fit_score.toFixed(2) : '—'}
           </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-2 h-2 rounded-sm bg-sky-400 shadow-[0_0_4px_rgba(56,189,248,0.6)]" />
-            Retrieval {breakdown.vector_score != null ? breakdown.vector_score.toFixed(2) : '—'}
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-2 h-2 rounded-full bg-sky-400 shadow-[0_0_4px_rgba(56,189,248,0.6)]" />
+            Semantic Match {breakdown.vector_score != null ? breakdown.vector_score.toFixed(2) : '—'}
           </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-2 h-2 rounded-sm bg-violet-500 shadow-[0_0_4px_rgba(139,92,246,0.6)]" />
-            Rerank {breakdown.rerank_score != null ? breakdown.rerank_score.toFixed(2) : '—'}
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_4px_rgba(249,115,22,0.6)]" />
+            AI Assessment {breakdown.rerank_score != null ? breakdown.rerank_score.toFixed(2) : '—'}
           </span>
         </div>
       </div>
@@ -90,42 +90,42 @@ function ScoreBar({ breakdown }: { breakdown: ScoreBreakdown }) {
   const lPct = (llmContrib / total) * 100
 
   return (
-    <div className="space-y-1">
-      <div className="flex h-3 rounded-full overflow-hidden gap-px bg-zinc-800">
+    <div className="space-y-2 mt-2">
+      <div className="flex h-3.5 w-full rounded-full overflow-hidden gap-0.5 bg-zinc-800/50">
         {rPct > 0 && (
           <div
-            className="bg-indigo-500 transition-all shadow-[0_0_8px_rgba(99,102,241,0.6)]"
+            className="bg-emerald-500 transition-all shadow-[0_0_8px_rgba(16,185,129,0.4)]"
             style={{ width: `${rPct}%` }}
-            title={`Rule: ${(rule_score ?? 0).toFixed(2)} × ${(rule_weight * 100).toFixed(0)}%`}
+            title={`Requirement Fit: ${(rule_score ?? 0).toFixed(2)}`}
           />
         )}
         {vPct > 0 && (
           <div
-            className="bg-sky-400 transition-all shadow-[0_0_8px_rgba(56,189,248,0.6)]"
+            className="bg-sky-400 transition-all shadow-[0_0_8px_rgba(56,189,248,0.4)]"
             style={{ width: `${vPct}%` }}
-            title={`Vector: ${(vector_score ?? 0).toFixed(2)} × ${(vector_weight * 100).toFixed(0)}%`}
+            title={`Semantic Match: ${(vector_score ?? 0).toFixed(2)}`}
           />
         )}
         {lPct > 0 && (
           <div
-            className="bg-violet-500 transition-all shadow-[0_0_8px_rgba(139,92,246,0.6)]"
+            className="bg-orange-500 transition-all shadow-[0_0_8px_rgba(249,115,22,0.4)]"
             style={{ width: `${lPct}%` }}
-            title={`LLM: ${(llm_score ?? 0).toFixed(2)} × ${(llm_weight * 100).toFixed(0)}%`}
+            title={`AI Assessment: ${(llm_score ?? 0).toFixed(2)}`}
           />
         )}
       </div>
-      <div className="flex gap-3 text-xs text-zinc-400">
-        <span className="flex items-center gap-1">
-          <span className="inline-block w-2 h-2 rounded-sm bg-indigo-500 shadow-[0_0_4px_rgba(99,102,241,0.6)]" />
-          Rule {rule_score != null ? rule_score.toFixed(2) : '—'}
+      <div className="flex gap-4 text-xs font-medium text-zinc-400">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.6)]" />
+            Requirement Fit {rule_score != null ? rule_score.toFixed(2) : '—'}
         </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block w-2 h-2 rounded-sm bg-sky-400 shadow-[0_0_4px_rgba(56,189,248,0.6)]" />
-          Vector {vector_score != null ? vector_score.toFixed(2) : '—'}
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-full bg-sky-400 shadow-[0_0_4px_rgba(56,189,248,0.6)]" />
+            Semantic Match {vector_score != null ? vector_score.toFixed(2) : '—'}
         </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block w-2 h-2 rounded-sm bg-violet-500 shadow-[0_0_4px_rgba(139,92,246,0.6)]" />
-          LLM {llm_score != null ? llm_score.toFixed(2) : '—'}
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_4px_rgba(249,115,22,0.6)]" />
+            AI Assessment {llm_score != null ? llm_score.toFixed(2) : '—'}
         </span>
       </div>
     </div>
@@ -137,70 +137,89 @@ function ScoreBar({ breakdown }: { breakdown: ScoreBreakdown }) {
 function MatchCard({ entry }: { entry: MatchEntry }) {
   const [expanded, setExpanded] = useState(false)
   const candidateUrl = `/candidates/${encodeURIComponent(entry.candidate_id)}`
+  const finalScore = entry.final_score != null ? (entry.final_score * 100).toFixed(0) : 0
+  const circumference = 2 * Math.PI * 18 // r=18
+  const strokeDashoffset = circumference - ((Number(finalScore) / 100) * circumference)
 
   return (
-    <div className="glass-panel rounded-xl p-5 flex gap-4 hover:-translate-y-0.5 transition-transform">
+    <div className="glass-panel rounded-xl p-5 flex gap-5 items-start hover:-translate-y-0.5 transition-transform">
       {/* Rank badge */}
-      <div className="flex-shrink-0 flex items-start justify-center">
-        <span
-          className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg ${
+      <div className="flex-shrink-0 mt-1">
+        <div
+          className={`flex items-center justify-center px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider border ${
             entry.rank === 1
-              ? 'bg-amber-500 shadow-amber-500/50'
+              ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
               : entry.rank === 2
-              ? 'bg-zinc-400 shadow-zinc-400/50'
+              ? 'bg-zinc-300/10 text-zinc-300 border-zinc-400/20'
               : entry.rank === 3
-              ? 'bg-amber-700 shadow-amber-700/50'
-              : 'bg-indigo-500 shadow-indigo-500/50'
+              ? 'bg-orange-900/20 text-orange-600 border-orange-900/30'
+              : 'bg-zinc-800/50 text-zinc-400 border-zinc-700'
           }`}
         >
-          #{entry.rank}
-        </span>
+          Rank #{entry.rank}
+        </div>
       </div>
 
       {/* Main content */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <Link
               to={candidateUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-base font-semibold text-zinc-100 hover:text-indigo-400 transition-colors"
+              className="text-lg font-bold text-zinc-100 hover:text-orange-400 transition-colors"
             >
               {entry.candidate_name ?? 'Unknown'}
             </Link>
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex items-center gap-2 mt-1">
               <SourceBadge source={entry.source_name} />
             </div>
           </div>
-          <div className="text-right flex-shrink-0">
-            <p className="text-2xl font-bold text-indigo-400 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]">
-              {entry.final_score != null ? entry.final_score.toFixed(2) : '—'}
-            </p>
-            <p className="text-xs text-zinc-500">final score</p>
+          <div className="flex items-center gap-4 flex-shrink-0">
+            <Link
+              to={candidateUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:inline-flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+            >
+              View Profile
+            </Link>
+            <div className="relative flex items-center justify-center w-14 h-14" title={`Final Score: ${entry.final_score?.toFixed(2)}`}>
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 44 44">
+                <circle cx="22" cy="22" r="18" fill="none" stroke="currentColor" strokeWidth="4" className="text-zinc-800" />
+                <circle
+                  cx="22" cy="22" r="18" fill="none" stroke="currentColor" strokeWidth="4"
+                  className="text-orange-500 drop-shadow-[0_0_4px_rgba(249,115,22,0.6)]"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span className="absolute text-sm font-bold text-zinc-100">{finalScore}<span className="text-[10px]">%</span></span>
+            </div>
           </div>
         </div>
-
-        {entry.score_breakdown?.requirement_fit_score != null && (
-          <p className="text-xs text-emerald-600 mt-1">
-            Requirement fit: {(entry.score_breakdown.requirement_fit_score * 100).toFixed(0)}%
-          </p>
-        )}
 
         {/* Score breakdown bar */}
         {entry.score_breakdown && <ScoreBar breakdown={entry.score_breakdown} />}
 
         {/* Explanation (collapsible) */}
         {entry.explanation && (
-          <div className="mt-3">
+          <div className="mt-4">
             <button
               onClick={() => setExpanded((e) => !e)}
-              className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+              className="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 font-medium transition-colors"
             >
-              {expanded ? '▲ Hide explanation' : '▼ Show explanation'}
+              {expanded ? (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+              )}
+              {expanded ? 'Hide AI assessment' : 'Show AI assessment'}
             </button>
             {expanded && (
-              <p className="mt-2 text-sm text-zinc-300 leading-relaxed bg-zinc-950/50 rounded-lg p-3 border border-zinc-800/50">
+              <p className="mt-2 text-sm text-zinc-300 leading-relaxed bg-zinc-950/50 rounded-lg p-3 border border-zinc-800/50 shadow-inner">
                 {entry.explanation}
               </p>
             )}
@@ -252,7 +271,7 @@ function FilteredSection({ entries }: { entries: MatchEntry[] }) {
                       to={candidateUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="hover:text-indigo-400 transition-colors"
+                      className="hover:text-orange-400 transition-colors"
                     >
                       {e.candidate_name ?? e.candidate_id}
                     </Link>
@@ -297,7 +316,7 @@ export default function MatchResultsList({ result, positionTitle, topK }: Props)
       <div className="mb-4 flex items-baseline justify-between">
         <h2 className="text-lg font-semibold text-zinc-100">
           Top {ranked.length} Candidates for{' '}
-          <span className="text-indigo-400">{positionTitle}</span>
+          <span className="text-orange-400">{positionTitle}</span>
         </h2>
         <span className="text-xs text-zinc-500">
           {result.total_candidates} evaluated · computed{' '}

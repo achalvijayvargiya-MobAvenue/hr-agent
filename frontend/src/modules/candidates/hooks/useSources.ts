@@ -127,6 +127,7 @@ export function useCandidates(sourceName?: string, jobId?: string) {
       const { data } = await api.get<Candidate[]>('/candidates', { params })
       return data
     },
+    refetchInterval: 5000,
   })
 }
 

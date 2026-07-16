@@ -31,17 +31,17 @@ export default function TagInput({ value, onChange, placeholder = 'Type and pres
   }
 
   return (
-    <div className="min-h-[38px] flex flex-wrap gap-1 rounded-lg border border-zinc-700 px-2 py-1 focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500 bg-zinc-950/50 transition-colors">
+    <div className="min-h-[38px] flex flex-wrap gap-1 rounded-lg border border-zinc-700 px-2 py-1 focus-within:ring-1 focus-within:ring-orange-500 focus-within:border-orange-500 bg-zinc-950/50 transition-colors">
       {value.map((tag) => (
         <span
           key={tag}
-          className="inline-flex items-center gap-1 rounded-md bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 text-xs font-medium text-indigo-400"
+          className="inline-flex items-center gap-1 rounded-md bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 text-xs font-medium text-orange-400"
         >
           {tag}
           <button
             type="button"
             onClick={() => removeTag(tag)}
-            className="hover:text-indigo-300 focus:outline-none transition-colors"
+            className="hover:text-orange-300 focus:outline-none transition-colors"
           >
             ×
           </button>

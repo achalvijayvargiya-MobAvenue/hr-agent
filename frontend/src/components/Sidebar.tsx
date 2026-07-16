@@ -49,7 +49,7 @@ function getIcon(name: string) {
 const navItems: NavItem[] = [
   { to: '/positions', label: 'Positions', icon: getIcon('Positions') },
   { to: '/candidates', label: 'Candidates', icon: getIcon('Candidates') },
-  { to: '/sources', label: 'Sources', icon: getIcon('Sources') },
+  // { to: '/sources', label: 'Sources', icon: getIcon('Sources') },
   { to: '/matches', label: 'Matches', icon: getIcon('Matches') },
   { to: '/users', label: 'Users', adminOnly: true, icon: getIcon('Users') },
 ]
@@ -70,7 +70,7 @@ export default function Sidebar() {
               className={({ isActive }) =>
                 `flex flex-col items-center justify-center w-16 h-16 rounded-xl transition-all duration-200 group relative ${
                   isActive
-                    ? 'text-indigo-400 bg-zinc-800 shadow-sm'
+                    ? 'text-orange-400 bg-zinc-800 shadow-sm'
                     : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50'
                 } animate-fade-in`
               }
@@ -85,7 +85,7 @@ export default function Sidebar() {
                     {item.label}
                   </span>
                   {isActive && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-indigo-500 rounded-r-md shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-orange-500 rounded-r-md shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
                   )}
                 </>
               )}
