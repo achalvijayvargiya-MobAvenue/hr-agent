@@ -107,15 +107,42 @@ function ScoreBar({ breakdown }: { breakdown: ScoreBreakdown }) {
   )
 }
 
+// ── Circular Progress ────────────────────────────────────────────────────────
+function CircularProgress({ percentage }: { percentage: number }) {
+  const radius = 16
+  const circumference = 2 * Math.PI * radius
+  const strokeDashoffset = circumference - (percentage / 100) * circumference
+  
+  // Determine color based on percentage
+  const colorClass = percentage >= 80 ? 'text-emerald-500' : percentage >= 60 ? 'text-orange-500' : 'text-zinc-400'
+
+  return (
+    <div className="relative flex items-center justify-center w-10 h-10">
+      <svg className="transform -rotate-90 w-10 h-10">
+        <circle cx="20" cy="20" r={radius} className="text-zinc-800" strokeWidth="3" fill="transparent" stroke="currentColor" />
+        <circle 
+          cx="20" cy="20" r={radius} 
+          className={`${colorClass} transition-all duration-1000 ease-out`} 
+          strokeWidth="3" fill="transparent" 
+          strokeDasharray={circumference} 
+          strokeDashoffset={strokeDashoffset} 
+          stroke="currentColor" strokeLinecap="round" 
+        />
+      </svg>
+      <span className="absolute text-[10px] font-bold text-white">{percentage}</span>
+    </div>
+  )
+}
+
 // ── Match Table Row ──────────────────────────────────────────────────────────
 
-function MatchRow({ entry }: { entry: MatchEntry }) {
+function MatchRow({ entry, index }: { entry: MatchEntry; index: number }) {
   const [expanded, setExpanded] = useState(false)
   const candidateUrl = `/candidates/${encodeURIComponent(entry.candidate_id)}`
   const finalScore = entry.final_score != null ? (entry.final_score * 100).toFixed(0) : 0
   
   const rankClass = entry.rank === 1
-    ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+    ? 'bg-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,0.6)] border-orange-400'
     : entry.rank === 2
     ? 'bg-zinc-300/10 text-zinc-300 border-zinc-400/20'
     : entry.rank === 3
@@ -124,7 +151,10 @@ function MatchRow({ entry }: { entry: MatchEntry }) {
 
   return (
     <>
-      <TableRow className="group transition-colors">
+      <TableRow 
+        className={`group transition-all duration-300 ${entry.rank === 1 ? 'bg-orange-500/5 hover:bg-orange-500/10' : ''}`}
+        style={{ animation: `fadeIn 0.5s ease-out ${index * 150}ms both` }}
+      >
         <TableCell className="w-16">
           <div className={`flex items-center justify-center px-2 py-1 rounded text-xs font-bold uppercase border ${rankClass}`}>
             #{entry.rank}
@@ -132,15 +162,22 @@ function MatchRow({ entry }: { entry: MatchEntry }) {
         </TableCell>
         <TableCell>
           <div className="flex flex-col py-1">
-            <Link
-              to={candidateUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-bold text-zinc-100 hover:text-orange-400 transition-colors flex items-center gap-1.5"
-            >
-              {entry.candidate_name ?? 'Unknown'}
-              <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                to={candidateUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold text-zinc-100 hover:text-orange-400 transition-colors flex items-center gap-1.5"
+              >
+                {entry.candidate_name ?? 'Unknown'}
+                <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+              </Link>
+              {entry.rank === 1 && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500 text-white uppercase tracking-wider shadow-sm animate-pulse">
+                  Top Match
+                </span>
+              )}
+            </div>
             <div className="mt-1 flex gap-1.5 items-center flex-wrap">
               <SourceBadge source={entry.source_name} />
               {entry.switch_frequency != null && entry.switch_frequency > 0 && (
@@ -160,8 +197,8 @@ function MatchRow({ entry }: { entry: MatchEntry }) {
         </TableCell>
         <TableCell>
           <div className="flex flex-col gap-1 items-end sm:items-start max-w-[150px]">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-zinc-100">{finalScore}%</span>
+            <div className="flex items-center gap-2 mb-1">
+              <CircularProgress percentage={Number(finalScore)} />
             </div>
             {entry.score_breakdown && <ScoreBar breakdown={entry.score_breakdown} />}
           </div>
@@ -275,21 +312,49 @@ interface Props {
 }
 
 export default function MatchResultsList({ result, positionTitle, topK }: Props) {
-  const ranked = result.matches.filter((m) => !m.is_filtered).slice(0, topK)
+  const [minScore, setMinScore] = useState(0)
+
+  // Use the filter on the already ranked matches
+  const ranked = result.matches
+    .filter((m) => !m.is_filtered)
+    .filter((m) => {
+      const score = m.final_score != null ? m.final_score * 100 : 0
+      return score >= minScore
+    })
+    .slice(0, topK)
+    
   const filtered = result.matches.filter((m) => m.is_filtered)
 
   return (
     <div className="animate-slide-up">
       {/* Header */}
-      <div className="mb-4 flex items-baseline justify-between px-1">
-        <h2 className="text-lg font-semibold text-zinc-100">
-          Top {ranked.length} Candidates for{' '}
-          <span className="text-orange-400">{positionTitle}</span>
-        </h2>
-        <span className="text-xs text-zinc-500">
-          {result.total_candidates} evaluated · computed{' '}
-          {result.computed_at ? new Date(result.computed_at).toLocaleTimeString() : '—'}
-        </span>
+      <div className="mb-4 flex items-center justify-between px-1">
+        <div>
+          <h2 className="text-lg font-semibold text-zinc-100">
+            Top {ranked.length} Candidates for{' '}
+            <span className="text-orange-400">{positionTitle}</span>
+          </h2>
+          <span className="text-xs text-zinc-500">
+            {result.total_candidates} evaluated · computed{' '}
+            {result.computed_at ? new Date(result.computed_at).toLocaleTimeString() : '—'}
+          </span>
+        </div>
+        
+        {/* Quick Filter */}
+        <div className="flex items-center gap-2 text-sm bg-zinc-900/50 p-1.5 rounded-lg border border-zinc-800">
+          <span className="text-zinc-400 text-xs font-medium px-2">Score &gt;</span>
+          <select 
+            value={minScore} 
+            onChange={(e) => setMinScore(Number(e.target.value))}
+            className="bg-zinc-950 text-zinc-200 text-xs border border-zinc-700 rounded px-2 py-1 outline-none focus:border-orange-500 transition-colors"
+          >
+            <option value={0}>Any</option>
+            <option value={50}>50%</option>
+            <option value={60}>60%</option>
+            <option value={75}>75%</option>
+            <option value={90}>90%</option>
+          </select>
+        </div>
       </div>
 
       {ranked.length === 0 && (
@@ -310,8 +375,8 @@ export default function MatchResultsList({ result, positionTitle, topK }: Props)
             </tr>
           </TableHeader>
           <TableBody>
-            {ranked.map((entry) => (
-              <MatchRow key={entry.candidate_id} entry={entry} />
+            {ranked.map((entry, idx) => (
+              <MatchRow key={entry.candidate_id} entry={entry} index={idx} />
             ))}
           </TableBody>
         </Table>

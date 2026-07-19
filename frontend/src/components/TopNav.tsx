@@ -27,8 +27,9 @@ export default function TopNav() {
     <header className="flex items-center justify-between h-14 bg-zinc-900 border-b border-zinc-800 px-4 text-zinc-300 animate-fade-in shrink-0 z-20 shadow-sm relative">
       <div className="flex items-center gap-6 h-full flex-1">
         <div className="flex items-center gap-2 pr-6 border-r border-zinc-800 h-full">
-          {/* Replaced logo image with stylized text for cleaner look */}
-          <span className="text-orange-500 font-bold text-lg tracking-wider">HRAgent</span>
+          <Link to="/">
+            <img src="/logo-removebg-preview.png" alt="Mobavenue" className="h-6 object-contain" />
+          </Link>
         </div>
 
         {/* Breadcrumbs */}
@@ -53,11 +54,11 @@ export default function TopNav() {
         </nav>
       </div>
 
-      <div className="flex items-center gap-4 relative flex-1 justify-end" ref={menuRef}>
-        {/* Search Trigger */}
+      {/* Centered Search */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:block">
         <button 
           onClick={() => window.dispatchEvent(new Event('open-omnibar'))}
-          className="hidden md:flex items-center justify-between w-64 px-3 py-1.5 text-sm text-zinc-400 bg-zinc-950/50 border border-zinc-700/50 rounded-md hover:border-zinc-600 hover:text-zinc-300 transition-colors"
+          className="flex items-center justify-between w-[320px] px-3 py-1.5 text-sm text-zinc-400 bg-zinc-950 border border-zinc-700/50 rounded-md hover:border-zinc-600 hover:text-zinc-300 transition-colors shadow-inner"
         >
           <div className="flex items-center gap-2">
             <Search size={14} />
@@ -67,6 +68,9 @@ export default function TopNav() {
             Cmd+K
           </kbd>
         </button>
+      </div>
+
+      <div className="flex items-center gap-4 relative flex-1 justify-end" ref={menuRef}>
 
         <button
           onClick={() => setIsOpen(!isOpen)}
