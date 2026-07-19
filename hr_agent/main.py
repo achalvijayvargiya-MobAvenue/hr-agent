@@ -26,6 +26,7 @@ from hr_agent.modules.users import models as _um  # noqa: F401
 from hr_agent.modules.users import role as _rm  # noqa: F401
 from hr_agent.modules.users import user_role as _urm  # noqa: F401
 from hr_agent.core.models import embedding as _em, processing_log as _pm  # noqa: F401
+from hr_agent.modules.integrations import models as _im  # noqa: F401
 from hr_agent.modules.candidates import import_models as _cim  # noqa: F401
 from hr_agent.modules.matching import pool_models as _pm2  # noqa: F401
 import hr_agent.modules.candidates.api as candidates

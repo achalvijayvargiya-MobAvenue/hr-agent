@@ -44,6 +44,7 @@ from hr_agent.modules.candidates.service import (
     normalize_email,
     resolve_import_conflict,
     apply_extraction_to_candidate,
+    save_job_application,
 )
 from hr_agent.modules.taxonomy.classification_service import (
     DomainClassificationError,
@@ -60,7 +61,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/candidates", tags=["candidates"], dependencies=[Depends(get_current_user)])
 
 
-def _candidate_response(candidate: Candidate, status: str) -> CandidateResponse:
+def _candidate_response(candidate: Candidate, status: str, application_statuses: dict[str, str] | None = None) -> CandidateResponse:
     return CandidateResponse(
         email=candidate.email,
         name=candidate.name,
@@ -82,6 +83,7 @@ def _candidate_response(candidate: Candidate, status: str) -> CandidateResponse:
         **candidate_domain_dict(candidate),
         source_name=candidate.source_name or "local_kb",
         status=status,
+        application_statuses=application_statuses or {},
         has_cv=candidate.has_cv,
         created_at=candidate.created_at,
     )
@@ -173,6 +175,8 @@ def _process_import(
                 source_name=import_row.source_name,
             )
         db.flush()
+        
+        save_job_application(db, email, import_row.import_metadata)
 
         logger.info(
             "[BG:CV] Candidate %s structured — name=%r  title=%r  role=%r  exp=%s yrs",
@@ -407,15 +411,24 @@ def dismiss_import(import_id: str, db: Session = Depends(get_db)) -> Response:
 def list_candidates(
     source_name: str | None = None,
     job_id: str | None = None,
+    applicants_only: bool = False,
     db: Session = Depends(get_db),
 ) -> list[CandidateResponse]:
     """Return all candidates, optionally filtered by source_name and/or job_id."""
     query = db.query(Candidate)
 
     if job_id:
-        from hr_agent.modules.matching.pool_models import JobCandidatePool
-        query = query.join(JobCandidatePool, Candidate.email == JobCandidatePool.candidate_id)
-        query = query.filter(JobCandidatePool.job_id == job_id)
+        if applicants_only:
+            from hr_agent.modules.integrations.models import JobApplication
+            query = query.join(JobApplication, Candidate.email == JobApplication.candidate_id)
+            query = query.filter(JobApplication.job_id == job_id)
+        else:
+            from hr_agent.modules.matching.pool_models import JobCandidatePool
+            query = query.join(JobCandidatePool, Candidate.email == JobCandidatePool.candidate_id)
+            query = query.filter(
+                JobCandidatePool.job_id == job_id,
+                JobCandidatePool.pool_status.in_(("in_pool", "manual_add"))
+            )
 
     if source_name:
         query = query.filter(Candidate.source_name == source_name)
@@ -423,6 +436,18 @@ def list_candidates(
     candidates = query.order_by(Candidate.created_at.desc()).all()
 
     results = []
+    
+    if candidates:
+        from hr_agent.modules.integrations.models import JobApplication
+        candidate_emails = [c.email for c in candidates]
+        apps = db.query(JobApplication).filter(JobApplication.candidate_id.in_(candidate_emails)).all()
+        
+        apps_by_candidate = {}
+        for app in apps:
+            if app.candidate_id not in apps_by_candidate:
+                apps_by_candidate[app.candidate_id] = {}
+            apps_by_candidate[app.candidate_id][app.job_id] = app.status
+
     for candidate in candidates:
         log = (
             db.query(ProcessingLog)
@@ -431,7 +456,8 @@ def list_candidates(
             .first()
         )
         proc_status = log.status if log else ProcessingStatus.PENDING
-        results.append(_candidate_response(candidate, proc_status))
+        app_statuses = apps_by_candidate.get(candidate.email, {}) if candidates else {}
+        results.append(_candidate_response(candidate, proc_status, app_statuses))
     return results
 
 
@@ -450,7 +476,12 @@ def get_candidate(candidate_email: str, db: Session = Depends(get_db)):
         .first()
     )
     status = log.status if log else ProcessingStatus.PENDING
-    return _candidate_response(candidate, status)
+    
+    from hr_agent.modules.integrations.models import JobApplication
+    apps = db.query(JobApplication).filter_by(candidate_id=candidate.email).all()
+    app_statuses = {app.job_id: app.status for app in apps}
+    
+    return _candidate_response(candidate, status, app_statuses)
 
 
 @router.delete("/{candidate_email}", status_code=204)

@@ -17,6 +17,7 @@ export interface Position {
   education_requirements: string[]
   certifications: string[]
   responsibilities: string[]
+  preferred_companies: string[]
   seniority_level: string | null
   summary: string | null
   salary: string | null
@@ -52,6 +53,7 @@ export interface PositionUpdateBody {
   education_requirements?: string[]
   certifications?: string[]
   responsibilities?: string[]
+  preferred_companies?: string[]
   summary?: string | null
   salary?: string | null
   position_status?: string | null
@@ -74,6 +76,7 @@ export interface PositionApproveBody {
   education_requirements?: string[]
   certifications?: string[]
   responsibilities?: string[]
+  preferred_companies?: string[]
   summary?: string | null
   salary?: string | null
 }
@@ -92,6 +95,7 @@ export interface ManualPositionBody {
   must_have_skills?: string[]
   good_to_have_skills?: string[]
   tools_and_technologies?: string[]
+  preferred_companies?: string[]
   summary?: string | null
   salary?: string | null
 }

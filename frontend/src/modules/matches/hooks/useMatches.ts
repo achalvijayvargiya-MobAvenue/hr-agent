@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '../../../lib/api'
 
@@ -33,6 +34,9 @@ export interface MatchEntry {
   requirement_gaps?: string[] | null
   explanation: string | null
   source_name: string | null
+  application_status?: string | null
+  switch_frequency?: number | null
+  matched_preferred_companies?: string[]
   score_breakdown: ScoreBreakdown | null
 }
 
@@ -84,4 +88,64 @@ export function useRecompute() {
       queryClient.invalidateQueries({ queryKey: ['matches', vars.job_id] })
     },
   })
+}
+
+export function useSyncStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (jobId: string) => {
+      const { data } = await api.post(`/matches/${jobId}/sync-status`)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidates'] })
+      queryClient.invalidateQueries({ queryKey: ['matches'] })
+    }
+  })
+}
+
+export function useLiveMatches(positionId: string, enabled = false) {
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    if (!enabled || !positionId) return
+
+    // Replace with your actual base URL or API URL base
+    const eventSource = new EventSource(`${api.defaults.baseURL || '/api/v1'}/matches/${positionId}/live`, {
+      withCredentials: true
+    })
+
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data)
+        
+        // Update the query cache directly for an instant update
+        queryClient.setQueriesData<MatchResponse>(
+          { queryKey: ['matches', positionId] },
+          (oldData) => {
+            if (!oldData) return oldData
+            
+            return {
+              ...oldData,
+              matches: oldData.matches.map(m => 
+                m.candidate_id === payload.candidate_email 
+                  ? { ...m, application_status: payload.status }
+                  : m
+              )
+            }
+          }
+        )
+      } catch (e) {
+        console.error('Failed to parse SSE event', e)
+      }
+    }
+
+    eventSource.onerror = (e) => {
+      console.error('SSE connection error', e)
+    }
+
+    return () => {
+      eventSource.close()
+    }
+  }, [positionId, enabled, queryClient])
 }

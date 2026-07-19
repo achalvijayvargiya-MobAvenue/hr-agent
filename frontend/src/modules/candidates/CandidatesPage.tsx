@@ -16,6 +16,7 @@ import {
 } from './hooks/useSources'
 import { usePositions } from '../positions/hooks/usePositions'
 import { Select } from '../../components/ui/Select'
+import { useSyncStatus } from '../matches/hooks/useMatches'
 
 const SOURCE_STYLES: Record<string, string> = {
   local_kb: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
@@ -28,6 +29,30 @@ function SourceBadge({ source }: { source: string }) {
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize border ${style}`}>
       {label}
+    </span>
+  )
+}
+
+function ApplicationStatusBadge({ status }: { status: string | null | undefined }) {
+  if (!status) return null
+
+  // Based on actual Zoho Recruit statuses
+  let bgClass = 'bg-zinc-800/50 text-zinc-400 border-zinc-700/50'
+  const lower = status.toLowerCase()
+
+  if (lower.includes('reject')) {
+    bgClass = 'bg-red-500/10 text-red-400 border-red-500/20'
+  } else if (lower.includes('interview')) {
+    bgClass = 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+  } else if (lower.includes('hired')) {
+    bgClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+  } else if (lower.includes('associated') || lower.includes('applied')) {
+    bgClass = 'bg-sky-500/10 text-sky-400 border-sky-500/20'
+  }
+
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${bgClass} whitespace-nowrap`}>
+      {status}
     </span>
   )
 }
@@ -138,16 +163,19 @@ export default function CandidatesPage() {
   const [sourceFilter, setSourceFilter] = useState('')
   const [jobFilter, setJobFilter] = useState('')
   const [nameSearch, setNameSearch] = useState('')
+  const [applicantsOnly, setApplicantsOnly] = useState(false)
 
   const { data: candidates = [], isLoading, isError } = useCandidates(
     sourceFilter || undefined,
-    jobFilter || undefined
+    jobFilter || undefined,
+    applicantsOnly
   )
   const { data: conflicts = [] } = useCandidateConflicts()
   const { data: imports = [] } = useCandidateImports()
   const deleteCandidate = useDeleteCandidate()
   const resolveConflict = useResolveConflict()
   const dismissImport = useDismissImport()
+  const syncStatus = useSyncStatus()
 
   const processingCount = imports.filter((i) => i.status === 'PROCESSING').length
   const failedImports = imports.filter((i) => i.status === 'FAILED')
@@ -158,6 +186,7 @@ export default function CandidatesPage() {
   const [fetchMessage, setFetchMessage] = useState<string | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [candidateToDelete, setCandidateToDelete] = useState<{email: string, name: string | null} | null>(null)
+  const [syncNotification, setSyncNotification] = useState<{ title: string; message: string; type: 'info' | 'success' } | null>(null)
 
   function handleFetchClick() {
     setFetchError(null)
@@ -174,12 +203,24 @@ export default function CandidatesPage() {
     }
     const promises = Array.from(selectedPositionsForFetch).map(id => fetchCandidates.mutateAsync(id))
     try {
-      await Promise.all(promises)
-      setFetchMessage("Candidates fetch triggered successfully for selected positions.")
-      setTimeout(() => {
-        setIsFetchModalOpen(false)
-        setFetchMessage(null)
-      }, 2000)
+      const results = await Promise.all(promises)
+      setIsFetchModalOpen(false)
+      
+      const totalNewCandidates = results.reduce((acc, res) => acc + (res.new_candidates || 0), 0)
+      
+      if (totalNewCandidates === 0) {
+        setSyncNotification({
+          title: 'Up to Date',
+          message: 'No new candidates were fetched from the sources.',
+          type: 'info'
+        })
+      } else {
+        setSyncNotification({
+          title: 'Sync Successful',
+          message: `Successfully fetched and queued ${totalNewCandidates} new candidate(s) for processing.`,
+          type: 'success'
+        })
+      }
     } catch (err) {
       setFetchError("Error triggering fetch for some positions.")
     }
@@ -310,6 +351,27 @@ export default function CandidatesPage() {
             </svg>
             {uploading ? 'Uploading…' : 'Upload CV'}
           </button>
+          
+          {jobFilter && (
+            <button
+              onClick={() => syncStatus.mutate(jobFilter)}
+              disabled={syncStatus.isPending}
+              className="flex items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-medium text-orange-400 hover:bg-orange-500/20 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {syncStatus.isPending ? (
+                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+              )}
+              {syncStatus.isPending ? 'Syncing...' : 'Sync Status'}
+            </button>
+          )}
+
           <button
             onClick={handleFetchClick}
             className="flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-orange-900/50 hover:bg-orange-500 transition-colors"
@@ -413,6 +475,17 @@ export default function CandidatesPage() {
           ]}
           className="w-48 rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2.5 transition-colors"
         />
+        {jobFilter && (
+          <Select
+            value={applicantsOnly ? 'true' : 'false'}
+            onChange={(val) => setApplicantsOnly(val === 'true')}
+            options={[
+              { label: 'Include AI Pool', value: 'false' },
+              { label: 'Applicants Only', value: 'true' }
+            ]}
+            className="w-48 rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2.5 transition-colors"
+          />
+        )}
         <Select
           value={sourceFilter}
           onChange={setSourceFilter}
@@ -435,7 +508,7 @@ export default function CandidatesPage() {
           <table className="w-full min-w-[960px] divide-y divide-zinc-800">
             <thead className="bg-zinc-900">
               <tr>
-                {['Name', 'Email', 'Current Title', 'Location', 'Source', 'Experience', 'Status', ''].map((h) => (
+                {['Name', 'Email', 'Current Title', 'Location', 'Application Status', 'Source', 'Experience', 'Status', ''].map((h) => (
                   <th
                     key={h || 'actions'}
                     className={`px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-zinc-400 whitespace-nowrap${
@@ -465,6 +538,20 @@ export default function CandidatesPage() {
                   </td>
                   <td className="px-4 py-4 text-sm text-zinc-400 whitespace-nowrap">
                     {c.location ?? '—'}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <div className="flex flex-wrap gap-1">
+                      {jobFilter 
+                        ? (c.application_statuses?.[jobFilter] 
+                            ? <ApplicationStatusBadge status={c.application_statuses[jobFilter]} /> 
+                            : '—')
+                        : Object.values(c.application_statuses || {}).length > 0 
+                          ? Object.values(c.application_statuses).map((st, i) => (
+                              <ApplicationStatusBadge key={i} status={st} />
+                            ))
+                          : '—'
+                      }
+                    </div>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
                     <SourceBadge source={c.source_name} />
@@ -597,6 +684,39 @@ export default function CandidatesPage() {
                 className="flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {deleteCandidate.isPending ? 'Deleting...' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sync Notification Modal */}
+      {syncNotification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl glass-panel p-6 shadow-2xl animate-slide-up border-zinc-700">
+            <div className="flex items-center gap-3 mb-2">
+              {syncNotification.type === 'success' ? (
+                <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+              <h2 className="text-lg font-semibold text-zinc-100">
+                {syncNotification.title}
+              </h2>
+            </div>
+            <p className="text-sm text-zinc-300 mb-6">
+              {syncNotification.message}
+            </p>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setSyncNotification(null)}
+                className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-500 shadow-lg transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
+              >
+                Close
               </button>
             </div>
           </div>

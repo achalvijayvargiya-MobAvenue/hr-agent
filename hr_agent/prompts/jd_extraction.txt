@@ -22,6 +22,7 @@ Schema:
   "responsibilities": ["<responsibility>", ...],
   "tools_and_technologies": ["<tool/technology>", ...],
   "seniority_level": "<Intern | Junior | Mid-Level | Senior | Lead | Manager | Director | Executive | null>",
+  "preferred_companies": ["<company>", ...],
   "summary": "<2-3 sentence role summary>"
 }
 

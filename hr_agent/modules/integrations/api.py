@@ -6,7 +6,7 @@ POST /sources/fetch/{position_id}      — pull candidates from sources and queu
 """
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from hr_agent.modules.candidates.api import _process_import
@@ -22,6 +22,7 @@ from hr_agent.modules.jobs.models import Job
 from hr_agent.modules.users.models import User
 from hr_agent.modules.candidates.service import create_import, normalize_email
 from hr_agent.modules.integrations.candidate_sources.registry import SourceRegistry
+from hr_agent.modules.integrations.models import JobApplication
 from hr_agent.core.services.embedding_service import EmbeddingService
 from hr_agent.core.services.extraction_service import ExtractionService
 
@@ -104,6 +105,7 @@ def fetch_candidates_for_position(
             name=record.name,
             location=record.location,
             email_hint=email_hint,
+            import_metadata=record.metadata,
         )
         db.flush()
 
@@ -129,3 +131,74 @@ def fetch_candidates_for_position(
         "total_records": len(records),
         "new_candidates": new_count,
     }
+
+
+@router.post("/zoho/webhook")
+async def zoho_webhook(request: Request, db: Session = Depends(get_db)):
+    """
+    Receive live status updates from Zoho Recruit Webhooks.
+    Zoho webhooks must be configured to send a POST request with the following JSON/Form fields:
+    - candidate_id (or Candidate_Id)
+    - job_id (or Job_Id)
+    - status (or Application_Status)
+    """
+    try:
+        if request.headers.get("content-type") == "application/json":
+            payload = await request.json()
+        else:
+            form = await request.form()
+            payload = dict(form)
+            
+        logger.info(f"[ZOHO WEBHOOK] Received payload: {payload}")
+        
+        # Zoho might send varying field names based on webhook config
+        zoho_candidate_id = payload.get("candidate_id") or payload.get("Candidate_Id")
+        status = payload.get("status") or payload.get("Application_Status")
+        
+        # We might receive our internal candidate email or job id if we passed it along, 
+        # but usually we only have zoho application id or zoho candidate id + zoho job id.
+        # If Zoho sends zoho_application_id
+        app_id = payload.get("zoho_application_id") or payload.get("id") or payload.get("Application_Id")
+        
+        # We need to find the JobApplication by zoho_application_id if we have it
+        app = None
+        if app_id:
+            app = db.query(JobApplication).filter_by(zoho_application_id=app_id).first()
+            
+        if not app and zoho_candidate_id:
+             # Find by zoho_candidate_id and zoho_job_id (this requires joining candidates if we stored zoho_candidate_id, 
+             # but we didn't store it on candidate. We stored it in import_metadata, which is gone. 
+             # Wait, JobApplication only has candidate_email, job_id, zoho_application_id, status.
+             # So we MUST rely on zoho_application_id or pass internal ids.
+             pass
+             
+        if not app and payload.get("internal_candidate_email") and payload.get("internal_job_id"):
+            app = db.query(JobApplication).filter_by(
+                candidate_id=payload.get("internal_candidate_email"),
+                job_id=payload.get("internal_job_id")
+            ).first()
+
+        if app:
+            app.status = status
+            db.commit()
+            
+            # Emit event to EventBus for SSE clients
+            try:
+                from hr_agent.core.events import bus
+                bus.emit("ApplicationStatusChanged", {
+                    "job_id": app.job_id,
+                    "candidate_email": app.candidate_id,
+                    "status": app.status
+                })
+            except Exception as e:
+                logger.error(f"[ZOHO WEBHOOK] Failed to emit event: {e}")
+                
+            return {"status": "ok", "message": "Updated application status"}
+        else:
+            logger.warning(f"[ZOHO WEBHOOK] Could not find JobApplication for payload: {payload}")
+            return {"status": "ok", "message": "JobApplication not found, ignored"}
+            
+    except Exception as e:
+        logger.error(f"[ZOHO WEBHOOK] Error processing webhook: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+

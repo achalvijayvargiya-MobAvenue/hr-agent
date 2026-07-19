@@ -28,6 +28,7 @@ export default function PositionsPage() {
 
   const [searchQuery, setSearchQuery] = useState('')
   const [syncError, setSyncError] = useState('')
+  const [syncNotification, setSyncNotification] = useState<{ title: string; message: string; type: 'info' | 'success' } | null>(null)
 
   const [uploadOpen, setUploadOpen] = useState(false)
   const [slideOverOpen, setSlideOverOpen] = useState(false)
@@ -93,6 +94,21 @@ export default function PositionsPage() {
               onClick={() => {
                 setSyncError('')
                 syncZoho.mutate(undefined, {
+                  onSuccess: (data) => {
+                    if (data.added === 0 && data.updated === 0) {
+                      setSyncNotification({
+                        title: 'Up to Date',
+                        message: 'No new jobs were fetched. The positions are already up to date.',
+                        type: 'info'
+                      })
+                    } else {
+                      setSyncNotification({
+                        title: 'Sync Successful',
+                        message: `Successfully synced! Added ${data.added} new position(s) and updated ${data.updated}.`,
+                        type: 'success'
+                      })
+                    }
+                  },
                   onError: () => {
                     setSyncError('Failed to sync positions from Zoho.')
                   }
@@ -295,6 +311,39 @@ export default function PositionsPage() {
             </div>
             <div className="flex-1 px-6 py-4">
               <ManualPositionForm onClose={() => setSlideOverOpen(false)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sync Notification Modal */}
+      {syncNotification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl glass-panel p-6 shadow-2xl animate-slide-up border-zinc-700">
+            <div className="flex items-center gap-3 mb-2">
+              {syncNotification.type === 'success' ? (
+                <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+              <h2 className="text-lg font-semibold text-zinc-100">
+                {syncNotification.title}
+              </h2>
+            </div>
+            <p className="text-sm text-zinc-300 mb-6">
+              {syncNotification.message}
+            </p>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setSyncNotification(null)}
+                className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-500 shadow-lg transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

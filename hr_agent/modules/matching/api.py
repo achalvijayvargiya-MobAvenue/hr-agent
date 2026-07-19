@@ -7,8 +7,11 @@ POST /recompute-match   — force a fresh pipeline run for a job
 import logging
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+import asyncio
+import json
 
 from hr_agent.core.deps import get_current_user, get_db, get_matching_service
 from hr_agent.core.config import get_settings
@@ -17,6 +20,7 @@ from hr_agent.modules.candidates.models import Candidate
 from hr_agent.modules.matching.models import MatchResult
 from hr_agent.modules.matching.schemas import MatchEntry, MatchResponse, RecomputeRequest, RecomputeResponse, ScoreBreakdown
 from hr_agent.modules.matching.service import MatchingService
+from hr_agent.modules.integrations.models import JobApplication
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["matches"], dependencies=[Depends(get_current_user)])
@@ -29,6 +33,24 @@ def _build_match_response(job_id: str, results: list[MatchResult], db: Session) 
     candidates = db.query(Candidate).filter(Candidate.email.in_(cand_ids)).all()
     name_map: dict[str, str | None] = {c.email: c.name for c in candidates}
     source_map: dict[str, str | None] = {c.email: c.source_name for c in candidates}
+    switch_map: dict[str, float | None] = {c.email: getattr(c, "switch_frequency", None) for c in candidates}
+    
+    apps = db.query(JobApplication).filter(JobApplication.job_id == job_id, JobApplication.candidate_id.in_(cand_ids)).all()
+    app_status_map: dict[str, str | None] = {app.candidate_id: app.status for app in apps}
+
+    from hr_agent.modules.jobs.models import Job
+    job = db.query(Job).filter(Job.id == job_id).first()
+    job_pref = [p.lower() for p in (job.preferred_companies or []) if p] if job else []
+    
+    matched_pref_map: dict[str, list[str]] = {}
+    for c in candidates:
+        matched = []
+        if job_pref and c.employment_history:
+            for exp in c.employment_history:
+                comp = (exp.get("company") or "").strip()
+                if comp and any(p in comp.lower() for p in job_pref):
+                    matched.append(comp)
+        matched_pref_map[c.email] = list(set(matched))
 
     settings = get_settings()
     sw = settings.score_weights
@@ -102,6 +124,9 @@ def _build_match_response(job_id: str, results: list[MatchResult], db: Session) 
                 final_score=result.final_score,
                 explanation=result.explanation,
                 source_name=source_map.get(result.candidate_id),
+                application_status=app_status_map.get(result.candidate_id),
+                switch_frequency=switch_map.get(result.candidate_id),
+                matched_preferred_companies=matched_pref_map.get(result.candidate_id, []),
                 score_breakdown=breakdown,
             )
         )
@@ -125,10 +150,13 @@ def _build_match_response(job_id: str, results: list[MatchResult], db: Session) 
                     final_score=None,
                     explanation=None,
                     source_name=source_map.get(result.candidate_id),
+                    application_status=app_status_map.get(result.candidate_id),
+                    switch_frequency=switch_map.get(result.candidate_id),
+                    matched_preferred_companies=matched_pref_map.get(result.candidate_id, []),
                 )
             )
-
-    latest_at = max((r.computed_at for r in results), default=None)
+    valid_dates = [r.computed_at for r in results if r.computed_at is not None]
+    latest_at = max(valid_dates) if valid_dates else None
 
     return MatchResponse(
         job_id=job_id,
@@ -208,3 +236,122 @@ def recompute_match(
         triggered=True,
         message="Matching pipeline queued. Poll GET /matches/{job_id} for results.",
     )
+
+
+@router.post("/matches/{job_id}/sync-status")
+def sync_zoho_status(
+    job_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    On-demand sync of candidate application statuses from Zoho for this job.
+    Updates the local JobApplication table and returns the count of updated statuses.
+    """
+    from hr_agent.modules.jobs.models import Job
+    from hr_agent.modules.integrations.zoho.client import ZohoRecruitClient
+    from hr_agent.modules.integrations.models import JobApplication
+    from hr_agent.core.events import bus
+
+    job = db.query(Job).filter_by(id=job_id).first()
+    if not job:
+        raise NotFoundError(message=f"Job {job_id!r} not found.")
+        
+    zoho_id = job.zoho_id
+    if not zoho_id:
+        return {"status": "skipped", "message": "Job is not linked to Zoho Recruit."}
+
+    client = ZohoRecruitClient()
+    logger.info(f"Syncing statuses for job {job_id} (Zoho ID: {zoho_id})")
+    applications = client.get_applications_for_job(zoho_id)
+    
+    if not applications:
+        return {"status": "ok", "updated": 0, "message": "No applications found in Zoho."}
+        
+    updated_count = 0
+    for app_data in applications:
+        z_app_id = app_data.get("id")
+        status = app_data.get("Application_Status")
+        z_cand_id = app_data.get("$Candidate_Id")
+        
+        if not z_app_id or not status:
+            continue
+            
+        app = db.query(JobApplication).filter_by(zoho_application_id=z_app_id).first()
+        
+        if not app and z_cand_id:
+            details = client.get_candidate_details(z_cand_id)
+            if details and details.get("Email"):
+                from hr_agent.modules.candidates.service import normalize_email
+                from hr_agent.modules.candidates.models import Candidate
+                email_hint = normalize_email(details.get("Email"))
+                if email_hint and db.query(Candidate).filter_by(email=email_hint).first():
+                    app = db.query(JobApplication).filter_by(job_id=job_id, candidate_id=email_hint).first()
+                    if app:
+                        app.zoho_application_id = z_app_id
+                    else:
+                        app = JobApplication(
+                            job_id=job_id,
+                            candidate_id=email_hint,
+                            status=status,
+                            zoho_application_id=z_app_id
+                        )
+                        db.add(app)
+                        # We just created it, so count it as updated
+                        updated_count += 1
+                        
+        if app:
+            if app.status != status or app in db.new:
+                app.status = status
+                updated_count += 1
+                try:
+                    bus.emit("ApplicationStatusChanged", {
+                        "job_id": app.job_id,
+                        "candidate_email": app.candidate_id,
+                        "status": app.status
+                    })
+                except Exception as e:
+                    logger.error(f"Failed to emit status event during sync: {e}")
+
+    db.commit()
+    return {"status": "ok", "updated": updated_count, "message": f"Successfully synced {updated_count} statuses."}
+
+
+@router.get("/matches/{job_id}/live")
+async def live_matches(job_id: str, request: Request):
+    """
+    Server-Sent Events endpoint to stream real-time candidate application status updates
+    for a specific job from Zoho webhook to the frontend.
+    """
+    from hr_agent.core.events import bus
+
+    async def event_generator():
+        # Create an async queue for this client
+        queue = asyncio.Queue()
+        
+        # Define a callback that puts events into the queue
+        def on_status_change(payload):
+            if payload.get("job_id") == job_id:
+                # We need to run it thread-safe since bus.emit might be from a sync context
+                loop = asyncio.get_event_loop()
+                loop.call_soon_threadsafe(queue.put_nowait, payload)
+
+        # Subscribe to the event
+        bus.on("ApplicationStatusChanged", on_status_change)
+        
+        try:
+            while True:
+                # Wait for a connection drop or a new event
+                if await request.is_disconnected():
+                    break
+                    
+                try:
+                    # Wait for an event with a timeout so we can check disconnects
+                    payload = await asyncio.wait_for(queue.get(), timeout=2.0)
+                    yield f"data: {json.dumps(payload)}\n\n"
+                except asyncio.TimeoutError:
+                    continue
+        finally:
+            bus.off("ApplicationStatusChanged", on_status_change)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+

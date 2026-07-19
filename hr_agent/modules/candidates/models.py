@@ -30,6 +30,7 @@ class Candidate(Base):
     experience_areas: Mapped[list | None] = mapped_column(JSON, nullable=True)
     responsibilities: Mapped[list | None] = mapped_column(JSON, nullable=True)
     seniority_level: Mapped[str | None] = mapped_column(String, nullable=True)
+    switch_frequency: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # Domain taxonomy (Phase 1)
     domain_code: Mapped[str | None] = mapped_column(String, nullable=True)

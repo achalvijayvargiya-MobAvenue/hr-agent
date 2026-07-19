@@ -78,6 +78,7 @@ def _job_to_response(job: Job, db: Session) -> JobResponse:
         certifications=job.certifications or [],
         responsibilities=job.responsibilities or [],
         tools_and_technologies=job.tools_and_technologies or [],
+        preferred_companies=job.preferred_companies or [],
         seniority_level=job.seniority_level,
         department=job.department,
         industry=job.industry,
@@ -161,6 +162,8 @@ def _apply_position_fields(job: Job, body: PositionApprove | PositionUpdate) -> 
         job.certifications = body.certifications
     if body.responsibilities is not None:
         job.responsibilities = body.responsibilities
+    if body.preferred_companies is not None:
+        job.preferred_companies = body.preferred_companies
     if body.summary is not None:
         job.summary = body.summary
     if body.salary is not None:
@@ -230,6 +233,7 @@ def _process_job(
         job.department = extracted.department or job.department
         job.industry = extracted.industry or job.industry
         job.summary = extracted.summary or job.summary
+        job.preferred_companies = extracted.preferred_companies if extracted.preferred_companies else job.preferred_companies
 
         # ── Step 1b: Domain classification ───────────────────────────────────
         logger.info("[BG:JOB] Step 1b — Domain classification for job %s", job_id)
@@ -459,6 +463,7 @@ def create_manual_position(
         education_requirements=body.education_requirements or [],
         certifications=body.certifications,
         responsibilities=body.responsibilities,
+        preferred_companies=body.preferred_companies,
         summary=body.summary,
         salary=body.salary,
         position_status="DRAFT",

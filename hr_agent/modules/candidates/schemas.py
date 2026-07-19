@@ -77,6 +77,7 @@ class CandidateResponse(BaseModel):
     domain_evidence: list[str] = Field(default_factory=list)
     source_name: str = "local_kb"
     status: str
+    application_statuses: dict[str, str] = Field(default_factory=dict)
     has_cv: bool = False
     created_at: datetime
 

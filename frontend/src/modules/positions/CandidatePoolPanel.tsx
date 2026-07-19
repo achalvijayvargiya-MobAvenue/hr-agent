@@ -52,7 +52,7 @@ function PoolRow({
       </td>
       <td className="px-4 py-3">
         <span
-          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[entry.pool_status] ?? 'bg-zinc-800 text-zinc-400'}`}
+          className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[entry.pool_status] ?? 'bg-zinc-800 text-zinc-400'}`}
         >
           {entry.pool_status.replace(/_/g, ' ')}
         </span>

@@ -1,7 +1,7 @@
 """Pydantic schemas for matching and ranking responses."""
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ScoreBreakdown(BaseModel):
@@ -38,6 +38,9 @@ class MatchEntry(BaseModel):
     final_score: float | None
     explanation: str | None
     source_name: str | None = None
+    application_status: str | None = None
+    switch_frequency: float | None = None
+    matched_preferred_companies: list[str] = Field(default_factory=list)
     score_breakdown: ScoreBreakdown | None = None
 
 

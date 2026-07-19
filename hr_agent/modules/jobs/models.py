@@ -32,6 +32,7 @@ class Job(Base):
     responsibilities: Mapped[list | None] = mapped_column(JSON, nullable=True)
     tools_and_technologies: Mapped[list | None] = mapped_column(JSON, nullable=True)
     seniority_level: Mapped[str | None] = mapped_column(String, nullable=True)
+    preferred_companies: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
     # Domain taxonomy (Phase 1)
     domain_code: Mapped[str | None] = mapped_column(String, nullable=True)

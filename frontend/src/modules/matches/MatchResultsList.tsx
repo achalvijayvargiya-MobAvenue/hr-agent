@@ -19,6 +19,7 @@ function SourceBadge({ source }: { source: string | null }) {
   )
 }
 
+
 // ── Score breakdown bar ─────────────────────────────────────────────────────────
 
 function ScoreBar({ breakdown }: { breakdown: ScoreBreakdown }) {
@@ -172,8 +173,18 @@ function MatchCard({ entry }: { entry: MatchEntry }) {
             >
               {entry.candidate_name ?? 'Unknown'}
             </Link>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <SourceBadge source={entry.source_name} />
+              {entry.switch_frequency != null && entry.switch_frequency > 0 && (
+                <span className="inline-flex items-center rounded border border-zinc-700 bg-zinc-800/50 px-2 py-0.5 text-xs font-medium text-zinc-400" title="Average Tenure (Years per Company)">
+                  Avg Tenure: {entry.switch_frequency.toFixed(1)} yrs/company
+                </span>
+              )}
+              {entry.matched_preferred_companies != null && entry.matched_preferred_companies.length > 0 && (
+                <span className="inline-flex items-center rounded border border-green-700/50 bg-green-900/30 px-2 py-0.5 text-xs font-medium text-green-400" title="Worked at preferred companies">
+                  Preferred Exp: {entry.matched_preferred_companies.join(', ')}
+                </span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-4 flex-shrink-0">

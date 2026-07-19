@@ -15,6 +15,7 @@ from hr_agent.core.models.processing_log import ProcessingLog, ProcessingStatus
 from hr_agent.modules.matching.profile_fingerprint_service import build_candidate_fingerprint
 from hr_agent.modules.taxonomy.classification_service import apply_domain_to_candidate
 from hr_agent.modules.candidates.schemas import CVExtracted
+from hr_agent.modules.integrations.models import JobApplication
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,13 @@ def apply_extraction_to_candidate(candidate: Candidate, extracted: CVExtracted) 
     candidate.responsibilities = extracted.responsibilities
     candidate.seniority_level = extracted.seniority_level
     candidate.summary = extracted.summary
+    
+    total_companies = len(extracted.employment_history) if extracted.employment_history else 0
+    total_years = extracted.years_experience or 0.0
+    if total_years > 0:
+        candidate.switch_frequency = total_years / total_companies if total_companies > 0 else 0.0
+    else:
+        candidate.switch_frequency = None
 
 
 def create_candidate_from_extraction(
@@ -147,6 +155,8 @@ def resolve_import_conflict(
     else:
         log.status = ProcessingStatus.STRUCTURED
         log.error_message = None
+        
+    save_job_application(db, candidate.email, import_row.import_metadata)
 
     db.flush()
     embedding_svc.generate_and_store(db, "candidate", candidate.email, extracted.summary)
@@ -189,6 +199,7 @@ def create_import(
     name: str | None = None,
     location: str | None = None,
     email_hint: str | None = None,
+    import_metadata: dict | None = None,
 ) -> CandidateImport:
     """Create a pending import row for background extraction."""
     normalized_hint = normalize_email(email_hint)
@@ -200,6 +211,34 @@ def create_import(
         name=name,
         location=location,
         proposed_email=normalized_hint,
+        import_metadata=import_metadata,
     )
     db.add(row)
     return row
+
+
+def save_job_application(db: Session, email: str, metadata: dict | None) -> None:
+    if not metadata:
+        return
+        
+    job_id = metadata.get("zoho_job_id")
+    if not job_id:
+        return
+        
+    status = metadata.get("status")
+    zoho_app_id = metadata.get("zoho_application_id")
+    
+    app = db.query(JobApplication).filter_by(job_id=job_id, candidate_id=email).first()
+    if app:
+        app.status = status
+        app.zoho_application_id = zoho_app_id
+    else:
+        app = JobApplication(
+            job_id=job_id,
+            candidate_id=email,
+            status=status,
+            zoho_application_id=zoho_app_id,
+        )
+        db.add(app)
+    db.flush()
+

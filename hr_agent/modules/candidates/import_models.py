@@ -30,6 +30,7 @@ class CandidateImport(Base):
     existing_email: Mapped[str | None] = mapped_column(String, nullable=True)
     extracted_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    import_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     name: Mapped[str | None] = mapped_column(String, nullable=True)
     location: Mapped[str | None] = mapped_column(String, nullable=True)

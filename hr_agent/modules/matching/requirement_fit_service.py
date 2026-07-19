@@ -39,9 +39,6 @@ def evaluate_requirement_fit(candidate: Candidate, job: Job) -> RequirementFitRe
     if job.experience_min is not None and years is not None and years < job.experience_min:
         reason = f"experience {years}yr is below minimum {job.experience_min}yr"
         return RequirementFitResult(passed=False, score=0.0, gaps=[reason], filter_reason=reason)
-    if job.experience_max is not None and years is not None and years > job.experience_max:
-        reason = f"experience {years}yr exceeds maximum {job.experience_max}yr"
-        return RequirementFitResult(passed=False, score=0.0, gaps=[reason], filter_reason=reason)
 
     hard_checks: dict = job.hard_checks or {}
     if not hard_checks:

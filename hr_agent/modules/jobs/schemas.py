@@ -32,6 +32,7 @@ class JDExtracted(BaseModel):
     responsibilities: list[str] = Field(default_factory=list)
     tools_and_technologies: list[str] = Field(default_factory=list)
     seniority_level: str | None = None
+    preferred_companies: list[str] = Field(default_factory=list)
     summary: str
 
 
@@ -54,6 +55,7 @@ class JobResponse(BaseModel):
     responsibilities: list[str]
     tools_and_technologies: list[str]
     seniority_level: str | None
+    preferred_companies: list[str] = Field(default_factory=list)
     summary: str | None
     salary: str | None = None
     domain_code: str | None = None
@@ -115,6 +117,7 @@ class PositionManualCreate(BaseModel):
     education_requirements: list[str] = Field(default_factory=list)
     certifications: list[str] = Field(default_factory=list)
     responsibilities: list[str] = Field(default_factory=list)
+    preferred_companies: list[str] = Field(default_factory=list)
     summary: str | None = None
     salary: str | None = None
 
@@ -136,6 +139,7 @@ class PositionApprove(BaseModel):
     education_requirements: list[str] | None = None
     certifications: list[str] | None = None
     responsibilities: list[str] | None = None
+    preferred_companies: list[str] | None = None
     summary: str | None = None
     salary: str | None = None
     hard_checks: dict | None = None
@@ -158,6 +162,7 @@ class PositionUpdate(BaseModel):
     education_requirements: list[str] | None = None
     certifications: list[str] | None = None
     responsibilities: list[str] | None = None
+    preferred_companies: list[str] | None = None
     summary: str | None = None
     salary: str | None = None
     hard_checks: dict | None = None

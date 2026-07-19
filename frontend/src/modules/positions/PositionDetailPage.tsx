@@ -60,6 +60,7 @@ export default function PositionDetailPage() {
   const [responsibilities, setResponsibilities] = useState<string[]>([])
   const [summary, setSummary] = useState('')
   const [salary, setSalary] = useState('')
+  const [preferredCompanies, setPreferredCompanies] = useState<string[]>([])
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
 
   useEffect(() => {
@@ -83,6 +84,7 @@ export default function PositionDetailPage() {
     setResponsibilities(position.responsibilities)
     setSummary(position.summary ?? '')
     setSalary(position.salary ?? '')
+    setPreferredCompanies(position.preferred_companies ?? [])
   }, [position])
 
   function buildBody(): PositionUpdateBody {
@@ -104,6 +106,7 @@ export default function PositionDetailPage() {
       education_requirements: education,
       certifications: certifications,
       responsibilities: responsibilities,
+      preferred_companies: preferredCompanies,
       summary: summary || null,
       salary: salary || null,
     }
@@ -252,6 +255,17 @@ export default function PositionDetailPage() {
             <label className={labelClass}>Location</label>
             <input value={location} onChange={(e) => setLocation(e.target.value)} className={inputClass} />
           </div>
+          <div>
+            <label className={labelClass}>Preferred Companies</label>
+            <TagInput 
+              value={preferredCompanies || []} 
+              onChange={setPreferredCompanies} 
+              placeholder="Add company, press Enter" 
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Employment Type</label>
             <Select

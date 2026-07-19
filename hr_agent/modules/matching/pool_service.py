@@ -97,7 +97,7 @@ class PoolService:
 
         db.query(JobCandidatePool).filter_by(job_id=job_id).delete()
 
-        candidates = db.query(Candidate).filter(Candidate.normalized_role.isnot(None)).all()
+        candidates = db.query(Candidate).all()
         now = datetime.now(timezone.utc)
         results: list[JobCandidatePool] = []
 
@@ -218,39 +218,56 @@ class PoolService:
 
     def sync_candidate_across_pools(self, db: Session, candidate_id: str) -> None:
         """
-        Re-score a candidate in all existing job pools (e.g. after a domain update).
+        Evaluate and update a candidate's pool status against all active jobs.
+        If a candidate is new or their domain changes, this will automatically 
+        place them into the appropriate pools.
         Preserves manual_add / manual_exclude overrides.
         """
         candidate = db.query(Candidate).filter_by(email=candidate_id).first()
         if not candidate:
             return
 
-        pools = db.query(JobCandidatePool).filter_by(candidate_id=candidate_id).all()
-        if not pools:
+        # Get all jobs that have a domain assigned
+        jobs = db.query(Job).filter(Job.domain_code.isnot(None)).all()
+        if not jobs:
             return
+
+        # Fetch existing pool entries for this candidate to preserve manual overrides
+        existing_pools = {
+            p.job_id: p 
+            for p in db.query(JobCandidatePool).filter_by(candidate_id=candidate_id).all()
+        }
 
         now = datetime.now(timezone.utc)
         updated_count = 0
-        for row in pools:
-            if row.pool_status in ("manual_add", "manual_exclude"):
+
+        for job in jobs:
+            existing_row = existing_pools.get(job.id)
+            
+            # Skip if there's a manual override
+            if existing_row and existing_row.pool_status in ("manual_add", "manual_exclude"):
                 continue
 
-            job = db.query(Job).filter_by(id=row.job_id).first()
-            if not job:
-                continue
-
+            # Evaluate candidate against this job
             updated = self._score_candidate(job, candidate, now)
-            row.pool_status = updated.pool_status
-            row.domain_match_score = updated.domain_match_score
-            row.subdomain_match_score = updated.subdomain_match_score
-            row.relevance_score = updated.relevance_score
-            row.match_reason = updated.match_reason
-            row.computed_at = updated.computed_at
+            
+            if existing_row:
+                # Update existing row
+                existing_row.pool_status = updated.pool_status
+                existing_row.domain_match_score = updated.domain_match_score
+                existing_row.subdomain_match_score = updated.subdomain_match_score
+                existing_row.relevance_score = updated.relevance_score
+                existing_row.match_reason = updated.match_reason
+                existing_row.computed_at = updated.computed_at
+            else:
+                # Insert new row
+                db.add(updated)
+                
             updated_count += 1
             
         if updated_count > 0:
             db.commit()
-            logger.info("[POOL] Synced candidate %s across %d pools", candidate_id, updated_count)
+            logger.info("[POOL] Synced candidate %s across %d jobs", candidate_id, updated_count)
 
     def get_pool(self, db: Session, job_id: str) -> list[JobCandidatePool]:
         return (
