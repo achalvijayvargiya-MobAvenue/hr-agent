@@ -131,7 +131,7 @@ function MatchRow({ entry }: { entry: MatchEntry }) {
           </div>
         </TableCell>
         <TableCell>
-          <div className="flex flex-col">
+          <div className="flex flex-col py-1">
             <Link
               to={candidateUrl}
               target="_blank"
@@ -144,21 +144,19 @@ function MatchRow({ entry }: { entry: MatchEntry }) {
             <div className="mt-1 flex gap-1.5 items-center flex-wrap">
               <SourceBadge source={entry.source_name} />
               {entry.switch_frequency != null && entry.switch_frequency > 0 && (
-                <span className="text-[10px] text-zinc-500">
+                <span className="text-[10px] text-zinc-500 font-medium">
                   Avg Tenure: {entry.switch_frequency.toFixed(1)} yr
                 </span>
               )}
             </div>
+            {entry.matched_preferred_companies != null && entry.matched_preferred_companies.length > 0 && (
+              <div className="mt-2">
+                <span className="inline-flex items-center rounded border border-green-700/50 bg-green-900/30 px-2 py-0.5 text-[10px] font-medium text-green-400 shadow-sm" title="Worked at preferred companies">
+                  🌟 Matched: {entry.matched_preferred_companies.join(', ')}
+                </span>
+              </div>
+            )}
           </div>
-        </TableCell>
-        <TableCell>
-          {entry.matched_preferred_companies != null && entry.matched_preferred_companies.length > 0 ? (
-            <span className="inline-flex items-center rounded border border-green-700/50 bg-green-900/30 px-2 py-0.5 text-[10px] font-medium text-green-400" title="Worked at preferred companies">
-              {entry.matched_preferred_companies.join(', ')}
-            </span>
-          ) : (
-            <span className="text-zinc-500 text-xs">—</span>
-          )}
         </TableCell>
         <TableCell>
           <div className="flex flex-col gap-1 items-end sm:items-start max-w-[150px]">
@@ -172,7 +170,7 @@ function MatchRow({ entry }: { entry: MatchEntry }) {
           {entry.explanation && (
             <button
               onClick={() => setExpanded((e) => !e)}
-              className="inline-flex items-center gap-1 text-xs font-medium text-orange-400 hover:text-orange-300 transition-colors px-2 py-1 rounded bg-orange-500/10 hover:bg-orange-500/20"
+              className="inline-flex items-center gap-1 text-xs font-medium text-orange-400 hover:text-orange-300 transition-colors px-2 py-1.5 rounded hover:bg-orange-500/10"
             >
               {expanded ? 'Hide Details' : 'AI Analysis'}
               {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -184,13 +182,13 @@ function MatchRow({ entry }: { entry: MatchEntry }) {
       {/* Expanded row for AI assessment */}
       {expanded && entry.explanation && (
         <TableRow className="bg-zinc-900/40 hover:bg-zinc-900/40 border-t-0">
-          <TableCell colSpan={5} className="p-0 border-b border-zinc-800">
+          <TableCell colSpan={4} className="p-0 border-b border-zinc-800">
             <div className="p-4 pl-20 animate-fade-in">
               <div className="flex items-start gap-3 bg-zinc-950/80 rounded-lg p-4 border border-zinc-800/80 shadow-inner">
                 <ShieldAlert size={16} className="text-orange-500 mt-0.5 flex-shrink-0" />
-                <div>
+                <div className="w-full">
                   <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">AI Assessment</h4>
-                  <p className="text-sm text-zinc-300 leading-relaxed">
+                  <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap break-words max-w-[80vw]">
                     {entry.explanation}
                   </p>
                 </div>
@@ -305,9 +303,8 @@ export default function MatchResultsList({ result, positionTitle, topK }: Props)
         <Table>
           <TableHeader>
             <tr>
-              <TableHead>Rank</TableHead>
+              <TableHead className="w-16">Rank</TableHead>
               <TableHead>Candidate</TableHead>
-              <TableHead>Preferred Exp</TableHead>
               <TableHead>Match Score</TableHead>
               <TableHead className="text-right">Analysis</TableHead>
             </tr>
