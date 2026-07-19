@@ -15,7 +15,7 @@ function SourceBadge({ source }: { source: string | null }) {
   if (!source) return null
   const style = SOURCE_STYLES[source] ?? 'bg-zinc-800 text-zinc-400 border-zinc-700'
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium capitalize border ${style}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize border ${style}`}>
       {source.replace(/_/g, ' ')}
     </span>
   )
@@ -152,69 +152,69 @@ function MatchRow({ entry, index }: { entry: MatchEntry; index: number }) {
   return (
     <>
       <TableRow 
-        className="group transition-all duration-300"
+        className="group transition-all duration-300 bg-zinc-950/20 hover:bg-zinc-800/40 border-b border-zinc-800/50"
         style={{ animation: `fadeIn 0.5s ease-out ${index * 150}ms both` }}
       >
-        <TableCell className="w-16">
-          <div className={`flex items-center justify-center px-2 py-1 rounded text-xs font-bold uppercase border ${rankClass}`}>
-            #{entry.rank}
+        <TableCell className="w-20 align-middle">
+          <div className="flex items-center justify-center">
+            <div className={`flex items-center justify-center px-2 py-1 rounded text-sm font-bold uppercase border ${rankClass}`}>
+              #{entry.rank}
+            </div>
           </div>
         </TableCell>
-        <TableCell>
+        <TableCell className="align-middle py-3">
           <div className="flex flex-col py-1">
             <div className="flex items-center gap-2">
               <Link
                 to={candidateUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-bold text-zinc-100 hover:text-orange-400 transition-colors flex items-center gap-1.5"
+                className="text-lg font-bold text-zinc-100 hover:text-orange-400 transition-colors flex items-center gap-2"
               >
                 {entry.candidate_name ?? 'Unknown'}
-                <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ExternalLink size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
               </Link>
               {entry.requirement_gaps && entry.requirement_gaps.length > 0 && (
-                <div title={`Missing Requirements:\n${entry.requirement_gaps.join('\n')}`} className="flex items-center text-red-500 bg-red-500/10 rounded-full p-1 cursor-help">
-                  <ShieldAlert size={14} />
+                <div title={`Missing Requirements:\n${entry.requirement_gaps.join('\n')}`} className="flex items-center text-red-500 bg-red-500/10 rounded-full p-1.5 cursor-help">
+                  <ShieldAlert size={16} />
                 </div>
               )}
             </div>
-            <div className="mt-1 flex gap-1.5 items-center flex-wrap">
+            <div className="mt-2 flex gap-2 items-center flex-wrap">
               <SourceBadge source={entry.source_name} />
               {entry.years_experience != null && entry.years_experience > 0 && (
-                <span className="text-[10px] text-zinc-300 font-bold bg-zinc-800 px-1.5 py-0.5 rounded">
+                <span className="text-xs text-zinc-300 font-bold bg-zinc-800 px-2 py-0.5 rounded">
                   {entry.years_experience.toFixed(1)} yr Exp
                 </span>
               )}
               {entry.switch_frequency != null && entry.switch_frequency > 0 && (
-                <span className="text-[10px] text-zinc-500 font-medium">
+                <span className="text-xs text-zinc-500 font-medium ml-1">
                   Avg Tenure: {entry.switch_frequency.toFixed(1)} yr
                 </span>
               )}
             </div>
             {entry.matched_preferred_companies != null && entry.matched_preferred_companies.length > 0 && (
               <div className="mt-2">
-                <span className="inline-flex items-center rounded border border-emerald-400/30 bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-emerald-400 shadow-sm" title="Worked at preferred companies">
+                <span className="inline-flex items-center rounded border border-emerald-400/30 bg-zinc-800 px-2 py-1 text-xs font-medium text-emerald-400 shadow-sm" title="Worked at preferred companies">
                   ✨ Matched: {entry.matched_preferred_companies.join(', ')}
                 </span>
               </div>
             )}
           </div>
         </TableCell>
-        <TableCell>
-          <div className="flex flex-col gap-1 items-end sm:items-start max-w-[150px]">
-            <div className="flex items-center gap-2 mb-1">
-              <CircularProgress percentage={Number(finalScore)} />
-            </div>
+        <TableCell className="align-middle">
+          <div className="flex justify-center">
+            <CircularProgress percentage={Number(finalScore)} />
           </div>
         </TableCell>
-        <TableCell className="text-right">
+        <TableCell className="text-center align-middle">
           {entry.explanation && (
             <button
               onClick={() => setExpanded((e) => !e)}
-              className="inline-flex items-center gap-1 text-xs font-medium text-orange-400 hover:text-orange-300 transition-colors px-2 py-1.5 rounded hover:bg-orange-500/10"
+              className="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-orange-400 hover:text-orange-300 transition-colors px-3 py-2 rounded-lg hover:bg-orange-500/10 w-full"
             >
               {expanded ? 'Hide Details' : 'AI Analysis'}
-              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </button>
           )}
         </TableCell>
@@ -357,12 +357,12 @@ export default function MatchResultsList({ result, positionTitle, topK }: Props)
       {/* Ranked Table */}
       {ranked.length > 0 && (
         <Table>
-          <TableHeader>
+          <TableHeader className="border-zinc-800/50">
             <tr>
-              <TableHead className="w-16">Rank</TableHead>
-              <TableHead>Candidate</TableHead>
-              <TableHead>Match Score</TableHead>
-              <TableHead className="text-right">Analysis</TableHead>
+              <TableHead className="w-20 text-center font-semibold tracking-wider">Rank</TableHead>
+              <TableHead className="font-semibold tracking-wider">Candidate</TableHead>
+              <TableHead className="text-center font-semibold tracking-wider">Match Score</TableHead>
+              <TableHead className="text-center font-semibold tracking-wider">Analysis</TableHead>
             </tr>
           </TableHeader>
           <TableBody>
