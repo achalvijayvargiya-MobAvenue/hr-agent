@@ -40,6 +40,7 @@ class MatchEntry(BaseModel):
     source_name: str | None = None
     application_status: str | None = None
     switch_frequency: float | None = None
+    years_experience: float | None = None
     matched_preferred_companies: list[str] = Field(default_factory=list)
     score_breakdown: ScoreBreakdown | None = None
 

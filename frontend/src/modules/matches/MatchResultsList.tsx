@@ -142,7 +142,7 @@ function MatchRow({ entry, index }: { entry: MatchEntry; index: number }) {
   const finalScore = entry.final_score != null ? (entry.final_score * 100).toFixed(0) : 0
   
   const rankClass = entry.rank === 1
-    ? 'bg-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,0.6)] border-orange-400'
+    ? 'text-amber-500 border-amber-500/30 bg-amber-500/10 shadow-[0_0_8px_rgba(245,158,11,0.1)]'
     : entry.rank === 2
     ? 'bg-zinc-300/10 text-zinc-300 border-zinc-400/20'
     : entry.rank === 3
@@ -152,7 +152,7 @@ function MatchRow({ entry, index }: { entry: MatchEntry; index: number }) {
   return (
     <>
       <TableRow 
-        className={`group transition-all duration-300 ${entry.rank === 1 ? 'bg-orange-500/5 hover:bg-orange-500/10' : ''}`}
+        className="group transition-all duration-300"
         style={{ animation: `fadeIn 0.5s ease-out ${index * 150}ms both` }}
       >
         <TableCell className="w-16">
@@ -172,14 +172,19 @@ function MatchRow({ entry, index }: { entry: MatchEntry; index: number }) {
                 {entry.candidate_name ?? 'Unknown'}
                 <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
               </Link>
-              {entry.rank === 1 && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500 text-white uppercase tracking-wider shadow-sm animate-pulse">
-                  Top Match
-                </span>
+              {entry.requirement_gaps && entry.requirement_gaps.length > 0 && (
+                <div title={`Missing Requirements:\n${entry.requirement_gaps.join('\n')}`} className="flex items-center text-red-500 bg-red-500/10 rounded-full p-1 cursor-help">
+                  <ShieldAlert size={14} />
+                </div>
               )}
             </div>
             <div className="mt-1 flex gap-1.5 items-center flex-wrap">
               <SourceBadge source={entry.source_name} />
+              {entry.years_experience != null && entry.years_experience > 0 && (
+                <span className="text-[10px] text-zinc-300 font-bold bg-zinc-800 px-1.5 py-0.5 rounded">
+                  {entry.years_experience.toFixed(1)} yr Exp
+                </span>
+              )}
               {entry.switch_frequency != null && entry.switch_frequency > 0 && (
                 <span className="text-[10px] text-zinc-500 font-medium">
                   Avg Tenure: {entry.switch_frequency.toFixed(1)} yr
@@ -188,8 +193,8 @@ function MatchRow({ entry, index }: { entry: MatchEntry; index: number }) {
             </div>
             {entry.matched_preferred_companies != null && entry.matched_preferred_companies.length > 0 && (
               <div className="mt-2">
-                <span className="inline-flex items-center rounded border border-green-700/50 bg-green-900/30 px-2 py-0.5 text-[10px] font-medium text-green-400 shadow-sm" title="Worked at preferred companies">
-                  🌟 Matched: {entry.matched_preferred_companies.join(', ')}
+                <span className="inline-flex items-center rounded border border-emerald-400/30 bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-emerald-400 shadow-sm" title="Worked at preferred companies">
+                  ✨ Matched: {entry.matched_preferred_companies.join(', ')}
                 </span>
               </div>
             )}
@@ -200,7 +205,6 @@ function MatchRow({ entry, index }: { entry: MatchEntry; index: number }) {
             <div className="flex items-center gap-2 mb-1">
               <CircularProgress percentage={Number(finalScore)} />
             </div>
-            {entry.score_breakdown && <ScoreBar breakdown={entry.score_breakdown} />}
           </div>
         </TableCell>
         <TableCell className="text-right">
@@ -224,7 +228,19 @@ function MatchRow({ entry, index }: { entry: MatchEntry; index: number }) {
               <div className="flex items-start gap-3 bg-zinc-950/80 rounded-lg p-4 border border-zinc-800/80 shadow-inner">
                 <ShieldAlert size={16} className="text-orange-500 mt-0.5 flex-shrink-0" />
                 <div className="w-full">
-                  <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">AI Assessment</h4>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">AI Assessment</h4>
+                    {entry.score_breakdown && (
+                      <div className="flex flex-col items-end gap-1 w-48">
+                        <ScoreBar breakdown={entry.score_breakdown} />
+                        <div className="flex gap-2 text-[8px] text-zinc-500 font-medium uppercase tracking-wider mt-0.5">
+                          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Fit</span>
+                          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-sky-400" />Semantic</span>
+                          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-orange-500" />AI</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap break-words max-w-[80vw]">
                     {entry.explanation}
                   </p>
@@ -312,16 +328,7 @@ interface Props {
 }
 
 export default function MatchResultsList({ result, positionTitle, topK }: Props) {
-  const [minScore, setMinScore] = useState(0)
-
-  // Use the filter on the already ranked matches
-  const ranked = result.matches
-    .filter((m) => !m.is_filtered)
-    .filter((m) => {
-      const score = m.final_score != null ? m.final_score * 100 : 0
-      return score >= minScore
-    })
-    .slice(0, topK)
+  const ranked = result.matches.filter((m) => !m.is_filtered).slice(0, topK)
     
   const filtered = result.matches.filter((m) => m.is_filtered)
 
@@ -338,22 +345,6 @@ export default function MatchResultsList({ result, positionTitle, topK }: Props)
             {result.total_candidates} evaluated · computed{' '}
             {result.computed_at ? new Date(result.computed_at).toLocaleTimeString() : '—'}
           </span>
-        </div>
-        
-        {/* Quick Filter */}
-        <div className="flex items-center gap-2 text-sm bg-zinc-900/50 p-1.5 rounded-lg border border-zinc-800">
-          <span className="text-zinc-400 text-xs font-medium px-2">Score &gt;</span>
-          <select 
-            value={minScore} 
-            onChange={(e) => setMinScore(Number(e.target.value))}
-            className="bg-zinc-950 text-zinc-200 text-xs border border-zinc-700 rounded px-2 py-1 outline-none focus:border-orange-500 transition-colors"
-          >
-            <option value={0}>Any</option>
-            <option value={50}>50%</option>
-            <option value={60}>60%</option>
-            <option value={75}>75%</option>
-            <option value={90}>90%</option>
-          </select>
         </div>
       </div>
 

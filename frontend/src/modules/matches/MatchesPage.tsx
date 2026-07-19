@@ -207,26 +207,6 @@ export default function MatchesPage() {
 
         {/* ── Bottom panel: results ──────────────────────────────────────────── */}
         <div className="animate-slide-up animate-stagger-2">
-          {/* Inline score legend */}
-          {(selectedPosition && matchResult && matchResult.matches.length > 0) && (
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-4 px-1">
-              <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Score Legend:</span>
-              <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-zinc-400">
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
-                  Requirement Fit
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.5)]" />
-                  Semantic Match
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_6px_rgba(249,115,22,0.5)]" />
-                  AI Assessment
-                </span>
-              </div>
-            </div>
-          )}
 
           {!selectedPosition && (
             <div className="h-64 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-zinc-800 bg-zinc-950/30 text-center px-4 mt-6">

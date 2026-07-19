@@ -36,6 +36,7 @@ export interface MatchEntry {
   source_name: string | null
   application_status?: string | null
   switch_frequency?: number | null
+  years_experience?: number | null
   matched_preferred_companies?: string[]
   score_breakdown: ScoreBreakdown | null
 }

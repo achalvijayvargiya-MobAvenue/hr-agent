@@ -34,6 +34,7 @@ def _build_match_response(job_id: str, results: list[MatchResult], db: Session) 
     name_map: dict[str, str | None] = {c.email: c.name for c in candidates}
     source_map: dict[str, str | None] = {c.email: c.source_name for c in candidates}
     switch_map: dict[str, float | None] = {c.email: getattr(c, "switch_frequency", None) for c in candidates}
+    exp_map: dict[str, float | None] = {c.email: getattr(c, "years_experience", None) for c in candidates}
     
     apps = db.query(JobApplication).filter(JobApplication.job_id == job_id, JobApplication.candidate_id.in_(cand_ids)).all()
     app_status_map: dict[str, str | None] = {app.candidate_id: app.status for app in apps}
@@ -126,6 +127,7 @@ def _build_match_response(job_id: str, results: list[MatchResult], db: Session) 
                 source_name=source_map.get(result.candidate_id),
                 application_status=app_status_map.get(result.candidate_id),
                 switch_frequency=switch_map.get(result.candidate_id),
+                years_experience=exp_map.get(result.candidate_id),
                 matched_preferred_companies=matched_pref_map.get(result.candidate_id, []),
                 score_breakdown=breakdown,
             )
@@ -152,6 +154,7 @@ def _build_match_response(job_id: str, results: list[MatchResult], db: Session) 
                     source_name=source_map.get(result.candidate_id),
                     application_status=app_status_map.get(result.candidate_id),
                     switch_frequency=switch_map.get(result.candidate_id),
+                    years_experience=exp_map.get(result.candidate_id),
                     matched_preferred_companies=matched_pref_map.get(result.candidate_id, []),
                 )
             )
