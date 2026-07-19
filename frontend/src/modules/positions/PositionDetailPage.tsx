@@ -157,31 +157,6 @@ export default function PositionDetailPage() {
           </h1>
           <StatusBadge status={positionStatus} />
         </div>
-        <div className="flex flex-wrap gap-2 justify-end">
-          <button
-            onClick={handleSave}
-            disabled={isBusy}
-            className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-orange-900/50 hover:bg-orange-500 disabled:opacity-50 transition-colors"
-          >
-            {update.isPending ? 'Saving…' : 'Save Changes'}
-          </button>
-          {isDraft && (
-            <button
-              onClick={handleApprove}
-              disabled={isBusy}
-              className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-orange-900/50 hover:bg-orange-500 disabled:opacity-50 transition-colors"
-            >
-              {approve.isPending ? 'Approving…' : 'Approve & Open'}
-            </button>
-          )}
-          <button
-            onClick={handleDelete}
-            disabled={isBusy}
-            className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/20 hover:text-red-300 disabled:opacity-50 transition-colors"
-          >
-            {deletePosition.isPending ? 'Deleting…' : 'Delete'}
-          </button>
-        </div>
       </div>
 
       {saveMessage && (
@@ -363,10 +338,44 @@ export default function PositionDetailPage() {
         education={education}
       />
 
-      <p className="mt-4 text-xs text-zinc-500">
+      <p className="mt-4 pb-24 text-xs text-zinc-500">
         Processing status: <span className="font-medium text-zinc-300">{position.status}</span>
         {' · '}Created {new Date(position.created_at).toLocaleString()}
       </p>
+
+      {/* Sticky Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-zinc-950/80 backdrop-blur-md border-t border-zinc-800 shadow-[0_-4px_20px_rgba(0,0,0,0.5)] transition-all sm:pl-64">
+        <div className="max-w-[1400px] mx-auto flex items-center justify-between">
+          <div className="text-sm text-zinc-400">
+            {isBusy ? 'Saving...' : saveMessage ? <span className="text-orange-400">{saveMessage}</span> : 'Unsaved changes'}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleDelete}
+              disabled={isBusy}
+              className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/20 hover:text-red-300 disabled:opacity-50 transition-colors"
+            >
+              Delete
+            </button>
+            {isDraft && (
+              <button
+                onClick={handleApprove}
+                disabled={isBusy}
+                className="rounded-lg border border-orange-500/20 bg-zinc-800 px-4 py-2 text-sm font-semibold text-orange-400 hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+              >
+                {approve.isPending ? 'Approving…' : 'Approve & Open'}
+              </button>
+            )}
+            <button
+              onClick={handleSave}
+              disabled={isBusy}
+              className="rounded-lg bg-orange-600 px-6 py-2 text-sm font-semibold text-white shadow-lg shadow-orange-900/50 hover:bg-orange-500 disabled:opacity-50 transition-colors"
+            >
+              {update.isPending ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

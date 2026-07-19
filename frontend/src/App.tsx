@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'sonner'
 import { isLoggedIn } from './lib/auth'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -104,6 +105,10 @@ export default function App() {
           />
         </Routes>
       </BrowserRouter>
+      <Toaster position="bottom-right" theme="dark" toastOptions={{
+        style: { background: '#09090b', border: '1px solid #27272a', color: '#f4f4f5' },
+        className: 'class'
+      }} />
     </QueryClientProvider>
   )
 }

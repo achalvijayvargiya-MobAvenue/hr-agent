@@ -107,22 +107,7 @@ export default function CandidateDetailPage() {
             </p>
           </div>
           <div className="flex items-center gap-2 ml-auto">
-            {candidate.has_cv && (
-              <button
-                onClick={handleViewPdf}
-                className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm font-semibold text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 transition-colors mr-2 cursor-pointer"
-              >
-                View PDF Resume
-              </button>
-            )}
             <SourceBadge source={candidate.source_name} />
-            <button
-              onClick={handleDelete}
-              disabled={deleteCandidate.isPending}
-              className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-sm font-semibold text-red-400 hover:bg-red-500/20 hover:text-red-300 disabled:opacity-50 transition-colors"
-            >
-              {deleteCandidate.isPending ? 'Deleting…' : 'Delete'}
-            </button>
           </div>
         </div>
 
@@ -216,9 +201,35 @@ export default function CandidateDetailPage() {
         </Section>
       )}
 
-      <p className="text-xs text-zinc-500 pb-8">
+      <p className="text-xs text-zinc-500 pb-24">
         Added {new Date(candidate.created_at).toLocaleString()}
       </p>
+
+      {/* Sticky Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-zinc-950/80 backdrop-blur-md border-t border-zinc-800 shadow-[0_-4px_20px_rgba(0,0,0,0.5)] transition-all sm:pl-64">
+        <div className="max-w-[1400px] mx-auto flex items-center justify-between">
+          <div className="text-sm text-zinc-400">
+            Candidate Actions
+          </div>
+          <div className="flex gap-2">
+            {candidate.has_cv && (
+              <button
+                onClick={handleViewPdf}
+                className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-semibold text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 transition-colors cursor-pointer"
+              >
+                View PDF Resume
+              </button>
+            )}
+            <button
+              onClick={handleDelete}
+              disabled={deleteCandidate.isPending}
+              className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/20 hover:text-red-300 disabled:opacity-50 transition-colors"
+            >
+              {deleteCandidate.isPending ? 'Deleting…' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

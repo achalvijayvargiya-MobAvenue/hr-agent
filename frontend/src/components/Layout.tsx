@@ -1,5 +1,7 @@
 import Sidebar from './Sidebar'
 import TopNav from './TopNav'
+import { Omnibar } from './ui/Omnibar'
+
 interface Props {
   children: React.ReactNode
 }
@@ -20,6 +22,8 @@ export default function Layout({ children }: Props) {
           </div>
         </main>
       </div>
+      <Omnibar />
     </div>
   )
 }
+

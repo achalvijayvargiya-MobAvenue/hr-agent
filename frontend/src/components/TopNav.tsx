@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
+import { useLocation, Link } from 'react-router-dom'
+import { LogOut, Search, ChevronRight } from 'lucide-react'
 import { useCurrentUser, useLogout } from '../modules/auth/useAuth'
 
 export default function TopNav() {
@@ -6,6 +8,7 @@ export default function TopNav() {
   const logout = useLogout()
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const location = useLocation()
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -17,15 +20,54 @@ export default function TopNav() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Generate basic breadcrumbs
+  const pathnames = location.pathname.split('/').filter((x) => x)
+
   return (
     <header className="flex items-center justify-between h-14 bg-zinc-900 border-b border-zinc-800 px-4 text-zinc-300 animate-fade-in shrink-0 z-20 shadow-sm relative">
-      <div className="flex items-center gap-6 h-full">
+      <div className="flex items-center gap-6 h-full flex-1">
         <div className="flex items-center gap-2 pr-6 border-r border-zinc-800 h-full">
-          <img src="/logo.png" alt="Logo" className="h-12 w-auto" />
+          {/* Replaced logo image with stylized text for cleaner look */}
+          <span className="text-orange-500 font-bold text-lg tracking-wider">HRAgent</span>
         </div>
+
+        {/* Breadcrumbs */}
+        <nav className="hidden md:flex items-center text-sm font-medium text-zinc-400">
+          <Link to="/" className="hover:text-zinc-100 transition-colors">Home</Link>
+          {pathnames.map((name, index) => {
+            const routeTo = `/${pathnames.slice(0, index + 1).join('/')}`
+            const isLast = index === pathnames.length - 1
+            return (
+              <div key={name} className="flex items-center">
+                <ChevronRight size={14} className="mx-2 text-zinc-600" />
+                {isLast ? (
+                  <span className="text-zinc-100 capitalize">{name.replace(/-/g, ' ')}</span>
+                ) : (
+                  <Link to={routeTo} className="hover:text-zinc-100 transition-colors capitalize">
+                    {name.replace(/-/g, ' ')}
+                  </Link>
+                )}
+              </div>
+            )
+          })}
+        </nav>
       </div>
 
-      <div className="flex items-center gap-4 relative" ref={menuRef}>
+      <div className="flex items-center gap-4 relative flex-1 justify-end" ref={menuRef}>
+        {/* Search Trigger */}
+        <button 
+          onClick={() => window.dispatchEvent(new Event('open-omnibar'))}
+          className="hidden md:flex items-center justify-between w-64 px-3 py-1.5 text-sm text-zinc-400 bg-zinc-950/50 border border-zinc-700/50 rounded-md hover:border-zinc-600 hover:text-zinc-300 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Search size={14} />
+            <span>Search...</span>
+          </div>
+          <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-sans bg-zinc-800 border border-zinc-700 rounded text-zinc-400">
+            Cmd+K
+          </kbd>
+        </button>
+
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-tr from-orange-600 to-orange-800 border border-zinc-700 text-white text-xs font-bold shadow-inner uppercase hover:ring-2 hover:ring-orange-500 hover:ring-offset-2 hover:ring-offset-zinc-900 transition-all focus:outline-none"
@@ -51,9 +93,7 @@ export default function TopNav() {
               }}
               className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 rounded-md hover:bg-zinc-800/50 hover:text-red-300 transition-colors group"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 transition-transform group-hover:scale-110">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-              </svg>
+              <LogOut size={16} className="transition-transform group-hover:-translate-x-1" />
               Sign out
             </button>
           </div>
