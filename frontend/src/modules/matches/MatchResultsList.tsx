@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { MatchEntry, MatchResponse, ScoreBreakdown } from './hooks/useMatches'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
-import { ChevronDown, ChevronUp, ExternalLink, ShieldAlert } from 'lucide-react'
+import { ChevronDown, ChevronUp, ExternalLink, ShieldAlert, ChevronRight } from 'lucide-react'
 
 // ── Source badge ────────────────────────────────────────────────────────────────
 
@@ -247,71 +247,59 @@ function MatchRow({ entry, index }: { entry: MatchEntry; index: number }) {
                     <h4 className="text-sm font-semibold text-zinc-100 tracking-wide">AI Assessment</h4>
                     {aiData?.recommendation && (
                       <span className={`ml-3 px-2 py-0.5 rounded text-xs font-bold ${
-                        aiData.recommendation.toLowerCase().includes('strong hire') ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                        aiData.recommendation.toLowerCase().includes('interview') ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                        String(aiData.recommendation).toLowerCase().includes('strong hire') ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                        String(aiData.recommendation).toLowerCase().includes('interview') ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
                         'bg-zinc-700/50 text-zinc-400 border border-zinc-600'
                       }`}>
                         {aiData.recommendation}
                       </span>
                     )}
                   </div>
-                  {entry.score_breakdown && (
-                    <div className="flex flex-col items-end gap-1 w-48">
-                      <ScoreBar breakdown={entry.score_breakdown} />
-                      <div className="flex gap-2 text-[8px] text-zinc-500 font-medium uppercase tracking-wider mt-0.5">
-                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Fit</span>
-                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-sky-400" />Semantic</span>
-                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-orange-500" />AI</span>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 {/* Body */}
                 <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
-                  <p className="mb-4">{aiText}</p>
+                  <p className="mb-2 max-w-5xl">{aiText}</p>
                   
                   {aiData && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                      {/* Strengths & Improvements */}
-                      <div className="space-y-4">
-                        {aiData.key_strengths && aiData.key_strengths.length > 0 && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-6 pt-6 border-t border-zinc-800/50">
+                      {/* Left Column: Strengths */}
+                      <div className="lg:col-span-1">
+                        {Array.isArray(aiData.key_strengths) && aiData.key_strengths.length > 0 && (
                           <div>
-                            <h5 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">Key Strengths</h5>
-                            <ul className="list-disc list-inside space-y-1">
-                              {aiData.key_strengths.map((s: string, i: number) => <li key={i}>{s}</li>)}
-                            </ul>
-                          </div>
-                        )}
-                        {aiData.areas_for_improvement && aiData.areas_for_improvement.length > 0 && (
-                          <div>
-                            <h5 className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">Areas for Improvement</h5>
-                            <ul className="list-disc list-inside space-y-1">
-                              {aiData.areas_for_improvement.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                            <h5 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">Key Strengths</h5>
+                            <ul className="space-y-2">
+                              {aiData.key_strengths.map((s: string, i: number) => (
+                                <li key={i} className="flex items-start gap-2.5 text-sm text-zinc-300">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500/60 mt-1.5 shrink-0" />
+                                  <span>{s}</span>
+                                </li>
+                              ))}
                             </ul>
                           </div>
                         )}
                       </div>
                       
-                      {/* Skills & Culture */}
-                      <div className="space-y-4">
-                        {aiData.skills_scorecard && Object.keys(aiData.skills_scorecard).length > 0 && (
+                      {/* Right Column: Skills & Culture */}
+                      <div className="lg:col-span-2 flex flex-col gap-6">
+                        {aiData.skills_scorecard && typeof aiData.skills_scorecard === 'object' && !Array.isArray(aiData.skills_scorecard) && Object.keys(aiData.skills_scorecard).length > 0 && (
                           <div>
-                            <h5 className="text-xs font-semibold text-sky-400 uppercase tracking-wider mb-2">Skills Scorecard</h5>
-                            <div className="grid grid-cols-2 gap-2">
+                            <h5 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">AI Skills Match</h5>
+                            <div className="flex flex-wrap gap-2">
                               {Object.entries(aiData.skills_scorecard).map(([skill, score]: [string, any], i) => (
-                                <div key={i} className="flex justify-between items-center bg-zinc-900/50 px-2 py-1 rounded border border-zinc-800">
-                                  <span className="truncate mr-2" title={skill}>{skill}</span>
-                                  <span className="font-medium text-zinc-400">{score}</span>
-                                </div>
+                                <span key={i} className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${String(score).toLowerCase() === 'missing' ? 'bg-zinc-900/50 text-zinc-600 border-zinc-800/50' : 'bg-zinc-800 text-zinc-300 border-zinc-700'}`}>
+                                  {skill}
+                                  {String(score).toLowerCase() !== 'missing' && <span className="ml-1.5 pl-1.5 border-l border-zinc-700 text-orange-400/90">{String(score)}</span>}
+                                </span>
                               ))}
                             </div>
                           </div>
                         )}
+                        
                         {aiData.culture_fit && (
                           <div>
-                            <h5 className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-2">Culture & Soft Skills</h5>
-                            <p>{aiData.culture_fit}</p>
+                            <h5 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">Culture & Soft Skills</h5>
+                            <p className="text-sm text-zinc-400 max-w-3xl">{aiData.culture_fit}</p>
                           </div>
                         )}
                       </div>

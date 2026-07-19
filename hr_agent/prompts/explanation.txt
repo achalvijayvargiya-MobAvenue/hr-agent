@@ -4,18 +4,17 @@ For each candidate below, provide a detailed fit analysis for the job opening.
 Return ONLY a valid JSON array matching the following format for each candidate:
 
 [
-  {
+  {{
     "candidate_id": "<email>",
-    "explanation": "<2-3 sentences general summary>",
-    "key_strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
-    "areas_for_improvement": ["<area 1>", "<area 2>"],
+    "explanation": "<Strictly 2 concise sentences on general fit>",
+    "key_strengths": ["<short phrase 1>", "<short phrase 2>", "<short phrase 3>"],
     "recommendation": "<Strong Hire | Interview | Pass>",
-    "skills_scorecard": {
-      "Python": "9/10",
-      "React": "missing"
-    },
-    "culture_fit": "<1-2 sentences on soft skills or cultural fit based on profile>"
-  },
+    "skills_scorecard": {{
+      "<Required Skill 1>": "<Score or 'missing'>",
+      "<Required Skill 2>": "<Score or 'missing'>"
+    }},
+    "culture_fit": "<Strictly 1-2 concise sentences on soft skills or cultural fit>"
+  }},
   ...
 ]
 

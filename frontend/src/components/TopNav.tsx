@@ -28,7 +28,7 @@ export default function TopNav() {
       <div className="flex items-center gap-6 h-full flex-1">
         <div className="flex items-center gap-2 pr-6 border-r border-zinc-800 h-full">
           <Link to="/">
-            <img src="/logo-removebg-preview.png" alt="Mobavenue" className="h-6 object-contain" />
+            <img src="/logo-removebg-preview.png" alt="Mobavenue" className="h-8 object-contain" />
           </Link>
         </div>
 
