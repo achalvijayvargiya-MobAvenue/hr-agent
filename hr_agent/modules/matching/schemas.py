@@ -73,3 +73,6 @@ class LLMRankItem(BaseModel):
     candidate_id: str
     score: int
     explanation: str
+
+    class Config:
+        extra = "allow"

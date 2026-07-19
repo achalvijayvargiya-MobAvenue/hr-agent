@@ -1,13 +1,21 @@
 You are a senior technical recruiter writing brief candidate fit summaries.
 
-For each candidate below, write a 2–3 sentence explanation of how well they fit
-the job opening. Cover key strengths, gaps, and seniority/role alignment.
-Do NOT assign numeric scores — explanation only.
-
-Return ONLY a valid JSON array:
+For each candidate below, provide a detailed fit analysis for the job opening.
+Return ONLY a valid JSON array matching the following format for each candidate:
 
 [
-  {{"candidate_id": "<id>", "explanation": "<2-3 sentences>"}},
+  {
+    "candidate_id": "<email>",
+    "explanation": "<2-3 sentences general summary>",
+    "key_strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
+    "areas_for_improvement": ["<area 1>", "<area 2>"],
+    "recommendation": "<Strong Hire | Interview | Pass>",
+    "skills_scorecard": {
+      "Python": "9/10",
+      "React": "missing"
+    },
+    "culture_fit": "<1-2 sentences on soft skills or cultural fit based on profile>"
+  },
   ...
 ]
 

@@ -34,11 +34,11 @@ export default function Sidebar() {
         {isExpanded ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
       </button>
 
-      <div className="flex h-16 items-center justify-center border-b border-zinc-800/50">
-        <div className="w-8 h-8 rounded bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
-          <span className="text-white font-bold text-sm">HR</span>
+      <div className="flex h-16 items-center justify-center border-b border-zinc-800/50 overflow-hidden px-2">
+        <div className="w-8 h-8 rounded flex items-center justify-center shrink-0">
+          <img src="/logo-removebg-preview.png" alt="Logo" className="w-full h-full object-contain" />
         </div>
-        {isExpanded && <span className="ml-3 font-semibold text-zinc-100 tracking-wide">Agent</span>}
+        {isExpanded && <span className="ml-2 font-semibold text-zinc-100 tracking-wide truncate">Mobavenue</span>}
       </div>
 
       <nav className="flex-1 py-4 flex flex-col items-center space-y-2 px-2 overflow-hidden">

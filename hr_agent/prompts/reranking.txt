@@ -14,10 +14,22 @@ Scoring guide:
   50–69  : Partial — meaningful gaps in skills, seniority, or industry experience
   0–49   : Poor — significant mismatches across multiple dimensions
 
-Return ONLY a valid JSON array — no markdown fences, no explanation outside the array:
+Return ONLY a valid JSON array matching the following format for each candidate — no markdown fences:
 
 [
-  {{"candidate_id": "<id>", "score": <0-100>, "explanation": "<2-3 sentences covering key strengths, gaps, and seniority/role fit>"}},
+  {
+    "candidate_id": "<id>",
+    "score": <0-100>,
+    "explanation": "<2-3 sentences covering key strengths, gaps, and seniority/role fit>",
+    "key_strengths": ["<strength 1>", "<strength 2>"],
+    "areas_for_improvement": ["<area 1>", "<area 2>"],
+    "recommendation": "<Strong Hire | Interview | Pass>",
+    "skills_scorecard": {
+      "Python": "9/10",
+      "React": "missing"
+    },
+    "culture_fit": "<1-2 sentences on soft skills or cultural fit based on profile>"
+  },
   ...
 ]
 

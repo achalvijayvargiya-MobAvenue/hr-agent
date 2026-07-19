@@ -140,7 +140,21 @@ function MatchRow({ entry, index }: { entry: MatchEntry; index: number }) {
   const [expanded, setExpanded] = useState(false)
   const candidateUrl = `/candidates/${encodeURIComponent(entry.candidate_id)}`
   const finalScore = entry.final_score != null ? (entry.final_score * 100).toFixed(0) : 0
-  
+
+  let aiData: any = null
+  let aiText = entry.explanation
+  if (entry.explanation) {
+    try {
+      const parsed = JSON.parse(entry.explanation)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        aiData = parsed
+        aiText = parsed.explanation || entry.explanation
+      }
+    } catch (e) {
+      // Fallback to plain text
+    }
+  }
+
   const rankClass = entry.rank === 1
     ? 'text-amber-500 border-amber-500/30 bg-amber-500/10 shadow-[0_0_8px_rgba(245,158,11,0.1)]'
     : entry.rank === 2
@@ -188,18 +202,16 @@ function MatchRow({ entry, index }: { entry: MatchEntry; index: number }) {
                 </span>
               )}
               {entry.switch_frequency != null && entry.switch_frequency > 0 && (
-                <span className="text-xs text-zinc-500 font-medium ml-1">
+                <span className="text-xs text-zinc-300 font-bold bg-zinc-800 px-2 py-0.5 rounded">
                   Avg Tenure: {entry.switch_frequency.toFixed(1)} yr
                 </span>
               )}
-            </div>
-            {entry.matched_preferred_companies != null && entry.matched_preferred_companies.length > 0 && (
-              <div className="mt-2">
-                <span className="inline-flex items-center rounded border border-emerald-400/30 bg-zinc-800 px-2 py-1 text-xs font-medium text-emerald-400 shadow-sm" title="Worked at preferred companies">
-                  ✨ Matched: {entry.matched_preferred_companies.join(', ')}
+              {entry.matched_preferred_companies != null && entry.matched_preferred_companies.length > 0 && (
+                <span className="inline-flex items-center rounded border border-emerald-400/30 bg-zinc-800 px-2 py-0.5 text-xs font-medium text-emerald-400 shadow-sm" title="Worked at preferred companies">
+                  ✨ Preferred Company: {entry.matched_preferred_companies.join(', ')}
                 </span>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </TableCell>
         <TableCell className="align-middle">
@@ -221,30 +233,92 @@ function MatchRow({ entry, index }: { entry: MatchEntry; index: number }) {
       </TableRow>
       
       {/* Expanded row for AI assessment */}
+      {/* Expanded row for AI assessment */}
       {expanded && entry.explanation && (
         <TableRow className="bg-zinc-900/40 hover:bg-zinc-900/40 border-t-0">
           <TableCell colSpan={4} className="p-0 border-b border-zinc-800">
             <div className="p-4 pl-20 animate-fade-in">
-              <div className="flex items-start gap-3 bg-zinc-950/80 rounded-lg p-4 border border-zinc-800/80 shadow-inner">
-                <ShieldAlert size={16} className="text-orange-500 mt-0.5 flex-shrink-0" />
-                <div className="w-full">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">AI Assessment</h4>
-                    {entry.score_breakdown && (
-                      <div className="flex flex-col items-end gap-1 w-48">
-                        <ScoreBar breakdown={entry.score_breakdown} />
-                        <div className="flex gap-2 text-[8px] text-zinc-500 font-medium uppercase tracking-wider mt-0.5">
-                          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Fit</span>
-                          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-sky-400" />Semantic</span>
-                          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-orange-500" />AI</span>
-                        </div>
-                      </div>
+              <div className="flex flex-col gap-4 bg-zinc-950/80 rounded-lg p-5 border border-zinc-800/80 shadow-inner">
+                
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-zinc-800/50 pb-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert size={16} className="text-orange-500" />
+                    <h4 className="text-sm font-semibold text-zinc-100 tracking-wide">AI Assessment</h4>
+                    {aiData?.recommendation && (
+                      <span className={`ml-3 px-2 py-0.5 rounded text-xs font-bold ${
+                        aiData.recommendation.toLowerCase().includes('strong hire') ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                        aiData.recommendation.toLowerCase().includes('interview') ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                        'bg-zinc-700/50 text-zinc-400 border border-zinc-600'
+                      }`}>
+                        {aiData.recommendation}
+                      </span>
                     )}
                   </div>
-                  <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap break-words max-w-[80vw]">
-                    {entry.explanation}
-                  </p>
+                  {entry.score_breakdown && (
+                    <div className="flex flex-col items-end gap-1 w-48">
+                      <ScoreBar breakdown={entry.score_breakdown} />
+                      <div className="flex gap-2 text-[8px] text-zinc-500 font-medium uppercase tracking-wider mt-0.5">
+                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Fit</span>
+                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-sky-400" />Semantic</span>
+                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-orange-500" />AI</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* Body */}
+                <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
+                  <p className="mb-4">{aiText}</p>
+                  
+                  {aiData && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                      {/* Strengths & Improvements */}
+                      <div className="space-y-4">
+                        {aiData.key_strengths && aiData.key_strengths.length > 0 && (
+                          <div>
+                            <h5 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">Key Strengths</h5>
+                            <ul className="list-disc list-inside space-y-1">
+                              {aiData.key_strengths.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                            </ul>
+                          </div>
+                        )}
+                        {aiData.areas_for_improvement && aiData.areas_for_improvement.length > 0 && (
+                          <div>
+                            <h5 className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">Areas for Improvement</h5>
+                            <ul className="list-disc list-inside space-y-1">
+                              {aiData.areas_for_improvement.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Skills & Culture */}
+                      <div className="space-y-4">
+                        {aiData.skills_scorecard && Object.keys(aiData.skills_scorecard).length > 0 && (
+                          <div>
+                            <h5 className="text-xs font-semibold text-sky-400 uppercase tracking-wider mb-2">Skills Scorecard</h5>
+                            <div className="grid grid-cols-2 gap-2">
+                              {Object.entries(aiData.skills_scorecard).map(([skill, score]: [string, any], i) => (
+                                <div key={i} className="flex justify-between items-center bg-zinc-900/50 px-2 py-1 rounded border border-zinc-800">
+                                  <span className="truncate mr-2" title={skill}>{skill}</span>
+                                  <span className="font-medium text-zinc-400">{score}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {aiData.culture_fit && (
+                          <div>
+                            <h5 className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-2">Culture & Soft Skills</h5>
+                            <p>{aiData.culture_fit}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
               </div>
             </div>
           </TableCell>

@@ -615,9 +615,8 @@ class MatchingService:
             if not isinstance(item, dict):
                 continue
             cid = item.get("candidate_id")
-            expl = item.get("explanation")
-            if cid in valid_ids and expl:
-                out[cid] = str(expl)
+            if cid in valid_ids:
+                out[cid] = json.dumps(item)
         logger.info("[EXPLAIN] Parsed %d/%d explanations.", len(out), len(results))
         return out
 
@@ -692,7 +691,7 @@ class MatchingService:
             c = cand_map.get(result.candidate_id)
             if item:
                 result.llm_score = round(item.score / 100.0, 4)
-                result.explanation = item.explanation
+                result.explanation = json.dumps(item.model_dump())
                 logger.info(
                     "[RERANK] %s (%s) → llm_score=%d/100  explanation: %s",
                     c.name if c else result.candidate_id,
