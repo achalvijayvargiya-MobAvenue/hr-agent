@@ -60,7 +60,7 @@ export default function MatchesPage() {
   return (
     <div className="animate-fade-in w-full max-w-[1400px] mx-auto min-w-0">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-zinc-100">Matching</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-white">Matching</h1>
         <p className="text-sm text-zinc-400 mt-1">Run AI-powered matching to discover top candidates for open positions</p>
       </div>
 

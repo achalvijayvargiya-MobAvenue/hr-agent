@@ -97,7 +97,7 @@ export default function CandidateDetailPage() {
       <div className="glass-panel rounded-xl p-6">
         <div className="flex items-start gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-100">
+            <h1 className="text-2xl font-bold tracking-tight text-white">
               {candidate.name ?? 'Unknown Candidate'}
             </h1>
             <p className="text-zinc-400 text-sm mt-0.5">{candidate.email}</p>

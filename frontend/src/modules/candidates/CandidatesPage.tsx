@@ -321,8 +321,8 @@ export default function CandidatesPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-zinc-100">Candidates</h1>
-          <span className="inline-flex items-center rounded-md bg-zinc-800 px-2 py-1 text-xs font-medium text-zinc-300 border border-zinc-700">
+          <h1 className="text-2xl font-bold tracking-tight text-white">Candidates</h1>
+          <span className="inline-flex items-center rounded-md bg-zinc-800 px-2 py-1 text-xs font-medium text-zinc-300 border border-zinc-700 shadow-sm">
             {filtered.length} candidate{filtered.length !== 1 ? 's' : ''}
           </span>
           <input

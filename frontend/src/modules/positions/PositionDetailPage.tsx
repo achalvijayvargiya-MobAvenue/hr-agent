@@ -152,7 +152,7 @@ export default function PositionDetailPage() {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-100 mb-2">
+          <h1 className="text-2xl font-bold tracking-tight text-white mb-2">
             {title || position.title || 'Untitled Position'}
           </h1>
           <StatusBadge status={positionStatus} />

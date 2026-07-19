@@ -86,9 +86,11 @@ export default function PositionsPage() {
     <div className="animate-fade-in w-full max-w-[1400px] mx-auto min-w-0 pb-12">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-100">Open Positions</h1>
-          <p className="text-sm text-zinc-400 mt-1">Manage and track open job requisitions</p>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight text-white">Positions</h1>
+          <span className="inline-flex items-center rounded-md bg-zinc-800 px-2 py-1 text-xs font-medium text-zinc-300 border border-zinc-700 shadow-sm">
+            {positions.length} position{positions.length !== 1 ? 's' : ''}
+          </span>
         </div>
         <div className="flex gap-3">
           <button
