@@ -11,6 +11,7 @@ from openai import OpenAI
 from pydantic import ValidationError
 
 from hr_agent.core.config import Settings
+from hr_agent.core.token_tracker import token_tracker
 from hr_agent.modules.taxonomy.schemas import DomainClassification
 import hr_agent.modules.taxonomy.taxonomy_service as taxonomy_service
 
@@ -123,6 +124,18 @@ class DomainClassificationService:
                 raw = response.choices[0].message.content or "{}"
                 parsed = json.loads(raw)
                 result = DomainClassification.model_validate(parsed)
+                usage = response.usage
+                if usage:
+                    logger.info(
+                        "[CLASSIFICATION] LLM usage - prompt_tokens: %d completion_tokens: %d total: %d",
+                        usage.prompt_tokens, usage.completion_tokens, usage.total_tokens
+                    )
+                    token_tracker.add_usage(
+                        service_name="ClassificationService",
+                        prompt_tokens=usage.prompt_tokens,
+                        completion_tokens=usage.completion_tokens,
+                        total_tokens=usage.total_tokens
+                    )
                 result = self._validate_against_taxonomy(result)
                 logger.info(
                     "[DOMAIN] Classified %s — domain=%s  subdomains=%s  confidence=%.2f",

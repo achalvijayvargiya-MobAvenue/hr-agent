@@ -20,6 +20,8 @@ class CandidateRecord:
     name: str | None = None
     email: str | None = None
     location: str | None = None
+    
+    skip_extraction: bool = False
 
 
 class CandidateSource(ABC):

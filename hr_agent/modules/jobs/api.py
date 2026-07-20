@@ -48,8 +48,10 @@ from hr_agent.core.services.extraction_service import ExtractionError, Extractio
 from hr_agent.modules.matching.pool_service import PoolService
 from hr_agent.modules.matching.profile_fingerprint_service import build_job_fingerprint
 from hr_agent.core.services.pdf_service import PDFExtractionError
+import threading
 
 logger = logging.getLogger(__name__)
+_job_semaphore = threading.Semaphore(5)
 router = APIRouter(prefix="/jobs", tags=["jobs"], dependencies=[Depends(get_current_user)])
 
 
@@ -188,6 +190,8 @@ def _process_job(
     """
     from hr_agent.core.database import SessionLocal
 
+    logger.info("[BG:JOB] Waiting for semaphore to start processing — job_id: %s", job_id)
+    _job_semaphore.acquire()
     logger.info("[BG:JOB] Background processing started — job_id: %s", job_id)
     db = SessionLocal()
     try:
@@ -301,6 +305,7 @@ def _process_job(
 
     finally:
         db.close()
+        _job_semaphore.release()
         logger.info("[BG:JOB] Background task finished for job %s.", job_id)
 
 def _process_manual_job(

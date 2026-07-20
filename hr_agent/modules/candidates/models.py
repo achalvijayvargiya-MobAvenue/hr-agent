@@ -42,6 +42,7 @@ class Candidate(Base):
     domain_evidence: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
     source_name: Mapped[str] = mapped_column(String, nullable=False, default="local_kb")
+    source_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     cv_pdf: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)

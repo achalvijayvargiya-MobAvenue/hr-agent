@@ -8,6 +8,7 @@ POST /candidates/imports/{id}/resolve — update existing or keep old data
 GET  /candidates/{email}             — return the structured candidate record
 """
 import logging
+import base64
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, UploadFile
 from sqlalchemy.orm import Session
@@ -56,8 +57,10 @@ from hr_agent.modules.taxonomy.domain_helpers import candidate_domain_dict
 from hr_agent.core.services.embedding_service import EmbeddingService
 from hr_agent.core.services.extraction_service import ExtractionError, ExtractionService
 from hr_agent.modules.matching.profile_fingerprint_service import build_candidate_fingerprint
+import threading
 
 logger = logging.getLogger(__name__)
+_import_semaphore = threading.Semaphore(5)
 router = APIRouter(prefix="/candidates", tags=["candidates"], dependencies=[Depends(get_current_user)])
 
 
@@ -115,6 +118,8 @@ def _process_import(
     """Background task: LLM extraction → duplicate check → create or flag conflict."""
     from hr_agent.core.database import SessionLocal
 
+    logger.info("[BG:CV] Waiting for semaphore to start processing — import_id: %s", import_id)
+    _import_semaphore.acquire()
     logger.info("[BG:CV] Background processing started — import_id: %s", import_id)
     db = SessionLocal()
     try:
@@ -174,6 +179,25 @@ def _process_import(
                 raw_text=raw_text,
                 source_name=import_row.source_name,
             )
+            
+        if import_row.import_metadata:
+            if import_row.import_metadata.get("cv_pdf"):
+                try:
+                    candidate.cv_pdf = base64.b64decode(import_row.import_metadata["cv_pdf"])
+                except Exception as e:
+                    logger.error("[BG:CV] Failed to decode cv_pdf from metadata: %s", e)
+            
+            # Map source_metadata
+            zoho_id = import_row.import_metadata.get("zoho_candidate_id")
+            zoho_last_modified = import_row.import_metadata.get("zoho_last_modified")
+            if zoho_id or zoho_last_modified:
+                source_metadata = candidate.source_metadata or {}
+                if zoho_id:
+                    source_metadata["zoho_candidate_id"] = str(zoho_id)
+                if zoho_last_modified:
+                    source_metadata["zoho_last_modified"] = zoho_last_modified
+                candidate.source_metadata = source_metadata
+                
         db.flush()
         
         save_job_application(db, email, import_row.import_metadata)
@@ -231,16 +255,6 @@ def _process_import(
             delete_import_row(db, import_row)
             db.commit()
             
-            if position_id:
-                try:
-                    from hr_agent.core.events import bus
-                    payload = {
-                        "position_id": position_id,
-                        "candidate_email": email
-                    }
-                    bus.emit("CandidateImported", payload)
-                except Exception as e:
-                    logger.error("[BG:CV] Failed to emit CandidateImported event for %s: %s", email, e)
 
 
             logger.info("[BG:CV] Candidate %s fully processed — status→EMBEDDED  ✓", email)
@@ -254,6 +268,7 @@ def _process_import(
 
     finally:
         db.close()
+        _import_semaphore.release()
         logger.info("[BG:CV] Background task finished for import %s.", import_id)
 
 

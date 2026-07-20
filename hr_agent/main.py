@@ -40,7 +40,7 @@ import hr_agent.modules.integrations.api as sources
 from hr_agent.core.errors import HRAgentError  # noqa: E402
 from hr_agent.core.database import init_db  # noqa: E402
 
-import hr_agent.modules.matching.listeners  # noqa: F401
+
 
 
 logger = logging.getLogger(__name__)

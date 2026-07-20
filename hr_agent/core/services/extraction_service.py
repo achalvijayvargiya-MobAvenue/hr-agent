@@ -15,6 +15,7 @@ from pathlib import Path
 
 from openai import OpenAI
 from pydantic import ValidationError
+from hr_agent.core.token_tracker import token_tracker
 
 from hr_agent.core.config import Settings
 from hr_agent.modules.candidates.schemas import CVExtracted
@@ -171,5 +172,11 @@ class ExtractionService:
             logger.info(
                 "[EXTRACT] LLM usage — prompt_tokens: %d  completion_tokens: %d  total: %d",
                 usage.prompt_tokens, usage.completion_tokens, usage.total_tokens,
+            )
+            token_tracker.add_usage(
+                service_name="ExtractionService",
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                total_tokens=usage.total_tokens
             )
         return response.choices[0].message.content or "{}"

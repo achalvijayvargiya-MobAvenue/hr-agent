@@ -6,6 +6,7 @@ import { usePositions, useUploadPosition, useSyncZohoPositions } from './hooks/u
 import ManualPositionForm from './ManualPositionForm'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import { Drawer } from '../../components/ui/Drawer'
+import { Modal } from '../../components/ui/Modal'
 
 
 const STATUS_STYLES: Record<string, string> = {
@@ -34,6 +35,7 @@ export default function PositionsPage() {
 
   const [uploadOpen, setUploadOpen] = useState(false)
   const [slideOverOpen, setSlideOverOpen] = useState(false)
+  const [syncNotification, setSyncNotification] = useState<{ title: string; message: string; type: 'info' | 'success' } | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -95,23 +97,23 @@ export default function PositionsPage() {
         <div className="flex gap-3">
           <button
             onClick={() => {
-              const promise = new Promise((resolve, reject) => {
-                syncZoho.mutate(undefined, {
-                  onSuccess: (data) => {
-                    if (data.added === 0 && data.updated === 0) {
-                      resolve('No new jobs. Positions are up to date.')
-                    } else {
-                      resolve(`Added ${data.added} new position(s) and updated ${data.updated}.`)
-                    }
-                  },
-                  onError: () => reject(new Error('Failed to sync positions from Zoho.'))
-                })
-              })
-
-              toast.promise(promise, {
-                loading: 'Fetching positions from Zoho...',
-                success: (msg) => `${msg}`,
-                error: (err) => err.message,
+              syncZoho.mutate(undefined, {
+                onSuccess: (data) => {
+                  if (data.added === 0 && data.updated === 0) {
+                    setSyncNotification({
+                      title: 'Up to Date',
+                      message: 'No new jobs found. Positions are already fully synced with Zoho.',
+                      type: 'info'
+                    })
+                  } else {
+                    setSyncNotification({
+                      title: 'Sync Successful',
+                      message: `Successfully added ${data.added} new position(s) and updated ${data.updated} existing position(s) from Zoho.`,
+                      type: 'success'
+                    })
+                  }
+                },
+                onError: () => toast.error('Failed to sync positions from Zoho.')
               })
             }}
             disabled={syncZoho.isPending}
@@ -279,6 +281,35 @@ export default function PositionsPage() {
       >
         <ManualPositionForm onClose={() => setSlideOverOpen(false)} />
       </Drawer>
+
+      {/* Sync Notification Modal */}
+      <Modal
+        isOpen={!!syncNotification}
+        onClose={() => setSyncNotification(null)}
+        title={syncNotification?.title || 'Notification'}
+        size="md"
+      >
+        <div className="flex flex-col items-center justify-center py-6 text-center">
+          {syncNotification?.type === 'success' ? (
+            <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mb-6">
+              <RefreshCw size={32} />
+            </div>
+          ) : (
+            <div className="w-16 h-16 bg-sky-500/10 text-sky-400 rounded-full flex items-center justify-center mb-6">
+              <RefreshCw size={32} />
+            </div>
+          )}
+          <p className="text-zinc-300 text-lg mb-8 max-w-sm">
+            {syncNotification?.message}
+          </p>
+          <button
+            onClick={() => setSyncNotification(null)}
+            className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-semibold py-3 rounded-lg transition-colors"
+          >
+            Done
+          </button>
+        </div>
+      </Modal>
 
     </div>
   )

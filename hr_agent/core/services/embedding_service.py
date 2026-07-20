@@ -12,6 +12,7 @@ from openai import OpenAI
 from sqlalchemy.orm import Session
 
 from hr_agent.core.config import Settings
+from hr_agent.core.token_tracker import token_tracker
 from hr_agent.core.models.embedding import Embedding
 
 logger = logging.getLogger(__name__)
@@ -183,6 +184,12 @@ class EmbeddingService:
             logger.info(
                 "[EMBED] Embedding API usage — prompt_tokens: %d  total_tokens: %d",
                 usage.prompt_tokens, usage.total_tokens,
+            )
+            token_tracker.add_usage(
+                service_name="EmbeddingService",
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=0,
+                total_tokens=usage.total_tokens
             )
         return np.array(response.data[0].embedding, dtype=np.float32)
 

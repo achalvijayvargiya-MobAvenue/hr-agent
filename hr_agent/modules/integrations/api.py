@@ -80,22 +80,30 @@ def fetch_candidates_for_position(
             continue
 
         email_hint = normalize_email(record.email)
+        
+        if getattr(record, 'skip_extraction', False):
+            if email_hint:
+                try:
+                    from hr_agent.core.deps import get_pool_service
+                    pool_svc = get_pool_service()
+                    pool_svc.sync_candidate_across_pools(db, email_hint)
+                except Exception as e:
+                    logger.error("[API:SOURCES] Failed to sync skipped candidate %s across pools: %s", email_hint, e)
+            continue
+            
         if email_hint:
             existing = db.query(Candidate).filter_by(email=email_hint).first()
-            if existing:
+            if existing and record.source_name != "zoho":
                 logger.info(
                     "[API:SOURCES] Candidate %s already exists. Skipping LLM extraction to save cost.", 
                     email_hint
                 )
                 try:
-                    from hr_agent.core.events import bus
-                    payload = {
-                        "position_id": position_id,
-                        "candidate_email": email_hint
-                    }
-                    bus.emit("CandidateImported", payload)
+                    from hr_agent.core.deps import get_pool_service
+                    pool_svc = get_pool_service()
+                    pool_svc.sync_candidate_across_pools(db, email_hint)
                 except Exception as e:
-                    logger.error("[API:SOURCES] Failed to emit CandidateImported event for %s: %s", email_hint, e)
+                    logger.error("[API:SOURCES] Failed to sync skipped candidate %s across pools: %s", email_hint, e)
                 continue
 
         import_row = create_import(

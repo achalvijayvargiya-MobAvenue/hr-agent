@@ -1,6 +1,8 @@
 import logging
 import tempfile
 import os
+import base64
+import concurrent.futures
 
 from hr_agent.modules.integrations.candidate_sources.base import CandidateSource, CandidateRecord
 from hr_agent.modules.integrations.zoho.client import ZohoRecruitClient
@@ -30,11 +32,20 @@ class ZohoCandidateSource(CandidateSource):
             
         db = self._session_factory()
         zoho_id = None
+        existing_zoho_cands = {}
         try:
             from hr_agent.modules.jobs.models import Job
+            from hr_agent.modules.candidates.models import Candidate
             job = db.query(Job).filter_by(id=position_id).first()
             if job and job.zoho_id:
                 zoho_id = job.zoho_id
+                
+            for c in db.query(Candidate).all():
+                if c.source_metadata:
+                    c_zoho_id = c.source_metadata.get("zoho_candidate_id")
+                    c_modified = c.source_metadata.get("zoho_last_modified")
+                    if c_zoho_id:
+                        existing_zoho_cands[str(c_zoho_id)] = c_modified
         finally:
             db.close()
             
@@ -52,67 +63,87 @@ class ZohoCandidateSource(CandidateSource):
             logger.info(f"No applications found for job {position_id} (Zoho ID: {zoho_id})")
             return []
             
-        for app in applications:
-            # Get candidate ID from application record
+        def process_candidate(app):
             candidate_id = app.get("$Candidate_Id")
             if not candidate_id:
-                continue
+                return None
                 
             logger.info(f"Processing candidate {candidate_id}")
             details = client.get_candidate_details(candidate_id)
             if not details:
-                continue
+                return None
                 
-            # Check for attachments (CV)
-            attachments = client.get_candidate_attachments(candidate_id)
+            zoho_modified = details.get("Modified_Time")
+            last_known_modified = existing_zoho_cands.get(str(candidate_id))
+            
+            skip_extraction = False
+            if zoho_modified and last_known_modified == zoho_modified:
+                logger.info(f"Candidate {candidate_id} is unchanged (Modified_Time: {zoho_modified}). Skipping AI extraction.")
+                skip_extraction = True
+
             raw_text = ""
             pdf_bytes = None
+            attachments = None
             
-            if attachments:
-                # Get the first attachment (usually the resume)
-                att_id = attachments[0].get("id")
-                file_name = attachments[0].get("File_Name", "")
+            if not skip_extraction:
+                # Check for attachments (CV)
+                attachments = client.get_candidate_attachments(candidate_id)
+                if attachments:
+                    # Get the first attachment (usually the resume)
+                    att_id = attachments[0].get("id")
+                    file_name = attachments[0].get("File_Name", "")
+                    
+                    if att_id and file_name.lower().endswith(".pdf"):
+                        pdf_bytes = client.download_attachment(candidate_id, att_id)
+                        if pdf_bytes:
+                            try:
+                                raw_text = extract_text(pdf_bytes)
+                            except Exception as e:
+                                logger.error(f"Failed to extract text from {file_name}: {e}")
                 
-                if att_id and file_name.lower().endswith(".pdf"):
-                    pdf_bytes = client.download_attachment(candidate_id, att_id)
-                    if pdf_bytes:
-                        try:
-                            raw_text = extract_text(pdf_bytes)
-                        except Exception as e:
-                            logger.error(f"Failed to extract text from {file_name}: {e}")
-            
-            # Always append the Zoho metadata to the raw text to ensure we don't miss anything
-            metadata_text = (
-                f"\\n\\n--- ZOHO PROFILE METADATA ---\\n"
-                f"Name: {details.get('First_Name', '')} {details.get('Last_Name', '')}\\n"
-                f"Email: {details.get('Email', '')}\\n"
-                f"Phone: {details.get('Phone', '')} {details.get('Mobile', '')}\\n"
-                f"Location: {details.get('City', '')} {details.get('State', '')} {details.get('Country', '')}\\n"
-                f"Experience: {details.get('Experience_in_Years', '')}\\n"
-                f"Skills: {details.get('Skill_Set', '')}\\n"
-                f"Current Title: {details.get('Current_Job_Title', '')}\\n"
-                f"Current Employer: {details.get('Current_Employer', '')}\\n"
-                f"Expected Salary: {details.get('Expected_Salary', '')}\\n"
-                f"Current Salary: {details.get('Current_Salary', '')}\\n"
-                f"Educational Details: {details.get('Educational_Details', '')}\\n"
-            )
-            raw_text = raw_text + metadata_text
+                # Always append the Zoho metadata to the raw text to ensure we don't miss anything
+                metadata_text = (
+                    f"\n\n--- ZOHO PROFILE METADATA ---\n"
+                    f"Name: {details.get('First_Name', '')} {details.get('Last_Name', '')}\n"
+                    f"Email: {details.get('Email', '')}\n"
+                    f"Phone: {details.get('Phone', '')} {details.get('Mobile', '')}\n"
+                    f"Location: {details.get('City', '')} {details.get('State', '')} {details.get('Country', '')}\n"
+                    f"Experience: {details.get('Experience_in_Years', '')}\n"
+                    f"Skills: {details.get('Skill_Set', '')}\n"
+                    f"Current Title: {details.get('Current_Job_Title', '')}\n"
+                    f"Current Employer: {details.get('Current_Employer', '')}\n"
+                    f"Expected Salary: {details.get('Expected_Salary', '')}\n"
+                    f"Current Salary: {details.get('Current_Salary', '')}\n"
+                    f"Educational Details: {details.get('Educational_Details', '')}\n"
+                )
+                raw_text = raw_text + metadata_text
 
-            record = CandidateRecord(
+            return CandidateRecord(
                 source_name=self.name,
                 raw_text=raw_text,
                 source_url=f"https://recruit.zoho.in/recruit/EntityInfo.do?module=Candidates&id={candidate_id}",
                 name=f"{details.get('First_Name', '')} {details.get('Last_Name', '')}".strip(),
                 email=details.get("Email"),
                 location=details.get("City") or details.get("Country"),
+                skip_extraction=skip_extraction,
                 metadata={
                     "zoho_candidate_id": candidate_id,
                     "zoho_application_id": app.get("id"),
                     "zoho_job_id": position_id,
                     "status": app.get("Application_Status"),
-                    "cv_pdf": pdf_bytes if attachments and pdf_bytes else None
+                    "zoho_last_modified": zoho_modified,
+                    "cv_pdf": base64.b64encode(pdf_bytes).decode('utf-8') if attachments and pdf_bytes else None
                 }
             )
-            records.append(record)
-            
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_app = {executor.submit(process_candidate, app): app for app in applications}
+            for future in concurrent.futures.as_completed(future_to_app):
+                try:
+                    record = future.result()
+                    if record:
+                        records.append(record)
+                except Exception as exc:
+                    logger.error(f"Candidate processing generated an exception: {exc}")
+
         return records

@@ -20,6 +20,7 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from hr_agent.core.config import Settings
+from hr_agent.core.token_tracker import token_tracker
 from hr_agent.modules.candidates.models import Candidate
 from hr_agent.modules.jobs.models import Job
 from hr_agent.modules.matching.pool_models import JobCandidatePool
@@ -582,6 +583,12 @@ class MatchingService:
                 "[EXPLAIN] LLM usage — prompt_tokens: %d  completion_tokens: %d",
                 usage.prompt_tokens, usage.completion_tokens,
             )
+            token_tracker.add_usage(
+                service_name="PoolService.Explanation",
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                total_tokens=usage.total_tokens
+            )
         return response.choices[0].message.content or "{}"
 
     def _parse_explanation_response(
@@ -718,6 +725,12 @@ class MatchingService:
             logger.info(
                 "[RERANK] LLM usage — prompt_tokens: %d  completion_tokens: %d  total: %d",
                 usage.prompt_tokens, usage.completion_tokens, usage.total_tokens,
+            )
+            token_tracker.add_usage(
+                service_name="PoolService.Rerank",
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                total_tokens=usage.total_tokens
             )
         return response.choices[0].message.content or "{}"
 

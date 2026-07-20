@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Upload, Search, Loader2, Trash2, CloudDownload, Users as UsersIcon, ShieldAlert, RefreshCw } from 'lucide-react'
+import { Upload, Search, Loader2, Trash2, CloudDownload, Users as UsersIcon, ShieldAlert, RefreshCw, Cpu } from 'lucide-react'
 import api from '../../lib/api'
 import {
   useCandidates,
@@ -20,7 +20,7 @@ import { usePositions } from '../positions/hooks/usePositions'
 import { Select } from '../../components/ui/Select'
 import { useSyncStatus } from '../matches/hooks/useMatches'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
-import { Drawer } from '../../components/ui/Drawer'
+import { Modal } from '../../components/ui/Modal'
 
 const SOURCE_STYLES: Record<string, string> = {
   local_kb: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
@@ -188,12 +188,36 @@ export default function CandidatesPage() {
   const failedImports = imports.filter((i) => i.status === 'FAILED')
 
   const fetchCandidates = useFetchCandidates()
-  const [isFetchDrawerOpen, setIsFetchDrawerOpen] = useState(false)
+  const [isFetchModalOpen, setIsFetchModalOpen] = useState(false)
   const [selectedPositionsForFetch, setSelectedPositionsForFetch] = useState<Set<string>>(new Set())
-  const [candidateToDelete, setCandidateToDelete] = useState<{email: string, name: string | null} | null>(null)
+  const [candidateToDelete, setCandidateToDelete] = useState<{ email: string, name: string | null } | null>(null)
+  const [syncNotification, setSyncNotification] = useState<{ title: string; message: string; type: 'info' | 'success' } | null>(null)
+
+  const FETCH_LOADING_TEXTS = [
+    "Connecting to integration sources...",
+    "Searching for new applications...",
+    "Downloading candidate resumes...",
+    "AI is analyzing skillset & experience...",
+    "Extracting structured data...",
+    "Comparing against job requirements...",
+    "Finalizing candidate profiles..."
+  ]
+  const [loadingTextIdx, setLoadingTextIdx] = useState(0)
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | undefined;
+    if (fetchCandidates.isPending) {
+      interval = setInterval(() => {
+        setLoadingTextIdx(prev => (prev + 1) % FETCH_LOADING_TEXTS.length)
+      }, 2500)
+    }
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [fetchCandidates.isPending, FETCH_LOADING_TEXTS.length])
 
   function handleFetchClick() {
-    setIsFetchDrawerOpen(true)
+    setIsFetchModalOpen(true)
   }
 
   async function handleFetchSubmit() {
@@ -201,26 +225,31 @@ export default function CandidatesPage() {
       toast.error("Please select at least one position.")
       return
     }
-    
-    const promise = new Promise((resolve, reject) => {
-      const promises = Array.from(selectedPositionsForFetch).map(id => fetchCandidates.mutateAsync(id))
-      Promise.all(promises).then(results => {
-        setIsFetchDrawerOpen(false)
-        const totalNewCandidates = results.reduce((acc, res) => acc + (res.new_candidates || 0), 0)
-        
-        if (totalNewCandidates === 0) {
-          resolve('No new candidates were fetched from the sources.')
-        } else {
-          resolve(`Successfully fetched and queued ${totalNewCandidates} new candidate(s).`)
-        }
-      }).catch(() => reject(new Error("Error triggering fetch for some positions.")))
-    })
 
-    toast.promise(promise, {
-      loading: 'Fetching candidates...',
-      success: (msg) => `${msg}`,
-      error: (err) => err.message,
-    })
+    try {
+      const promises = Array.from(selectedPositionsForFetch).map(id => fetchCandidates.mutateAsync(id))
+      const results = await Promise.all(promises)
+      setIsFetchModalOpen(false)
+      const totalNewCandidates = results.reduce((acc, res) => acc + (res.new_candidates || 0), 0)
+
+      if (totalNewCandidates === 0) {
+        setSyncNotification({
+          title: 'Up to Date',
+          message: 'No new candidates were fetched from the sources. All integrated platforms are fully synced.',
+          type: 'info'
+        })
+      } else {
+        setSyncNotification({
+          title: 'Sync Successful',
+          message: `Successfully fetched and queued ${totalNewCandidates} new candidate(s) for processing.`,
+          type: 'success'
+        })
+      }
+    } catch (error) {
+      toast.error("Error triggering fetch for some positions.")
+      console.error(error)
+      setIsFetchModalOpen(false)
+    }
   }
 
   function handleSelectAllPositions(checked: boolean) {
@@ -268,7 +297,7 @@ export default function CandidatesPage() {
     if (files.length === 0) return
     e.target.value = ''
     setUploading(true)
-    
+
     const promise = new Promise((resolve, reject) => {
       Promise.allSettled(
         files.map(async (file) => {
@@ -287,7 +316,7 @@ export default function CandidatesPage() {
           queryClient.invalidateQueries({ queryKey: ['candidate-imports'] })
           queryClient.invalidateQueries({ queryKey: ['candidate-conflicts'] })
         }
-        
+
         if (failed > 0) {
           const firstFailure = results.find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined
           const detail = (firstFailure?.reason as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Upload failed.'
@@ -303,7 +332,7 @@ export default function CandidatesPage() {
       success: (msg) => `${msg}`,
       error: (err) => err.message,
     })
-    
+
     setUploading(false)
   }
 
@@ -343,7 +372,7 @@ export default function CandidatesPage() {
             {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
             Upload CV
           </button>
-          
+
           {jobFilter && (
             <button
               onClick={() => {
@@ -523,14 +552,14 @@ export default function CandidatesPage() {
                   <TableCell className="text-zinc-400">{c.location ?? '—'}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {jobFilter 
-                        ? (c.application_statuses?.[jobFilter] 
-                            ? <ApplicationStatusBadge status={c.application_statuses[jobFilter]} /> 
-                            : '—')
-                        : Object.values(c.application_statuses || {}).length > 0 
+                      {jobFilter
+                        ? (c.application_statuses?.[jobFilter]
+                          ? <ApplicationStatusBadge status={c.application_statuses[jobFilter]} />
+                          : '—')
+                        : Object.values(c.application_statuses || {}).length > 0
                           ? Object.values(c.application_statuses).map((st, i) => (
-                              <ApplicationStatusBadge key={i} status={st} />
-                            ))
+                            <ApplicationStatusBadge key={i} status={st} />
+                          ))
                           : '—'
                       }
                     </div>
@@ -560,58 +589,112 @@ export default function CandidatesPage() {
         </div>
       )}
 
-      <Drawer
-        isOpen={isFetchDrawerOpen}
-        onClose={() => setIsFetchDrawerOpen(false)}
-        title="Fetch Candidates"
+      <Modal
+        isOpen={isFetchModalOpen}
+        onClose={() => {
+          if (!fetchCandidates.isPending) setIsFetchModalOpen(false)
+        }}
+        title={fetchCandidates.isPending ? "Syncing Candidates..." : "Fetch Candidates"}
         size="md"
       >
-        <p className="text-sm text-zinc-400 mb-6">Select job positions to sync new candidates from connected integrations.</p>
-        
-        <div className="max-h-80 overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-950/50 p-2 mb-6 shadow-inner space-y-1 custom-scrollbar">
-          <label className="flex items-center gap-3 p-3 hover:bg-zinc-800/80 rounded-lg cursor-pointer border border-transparent hover:border-zinc-700 transition-all shadow-sm mb-2 group">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-orange-500 focus:ring-orange-500 focus:ring-offset-zinc-900"
-              checked={positions.length > 0 && selectedPositionsForFetch.size === positions.length}
-              onChange={(e) => handleSelectAllPositions(e.target.checked)}
-            />
-            <span className="text-sm font-medium text-zinc-200 group-hover:text-white transition-colors">Select All Positions</span>
-          </label>
-          
-          {positions.map((p) => (
-            <label key={p.id} className="flex items-center gap-3 p-3 hover:bg-zinc-800/50 rounded-lg cursor-pointer border border-transparent hover:border-zinc-700 hover:shadow-sm transition-all group">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-orange-500 focus:ring-orange-500 focus:ring-offset-zinc-900"
-                checked={selectedPositionsForFetch.has(p.id)}
-                onChange={(e) => handleSelectPosition(p.id, e.target.checked)}
-              />
-              <span className="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors">{p.title}</span>
-            </label>
-          ))}
-          {positions.length === 0 && (
-            <p className="text-sm text-zinc-500 p-4 text-center">No positions available.</p>
-          )}
-        </div>
+        {fetchCandidates.isPending ? (
+          <div className="flex flex-col items-center justify-center py-10 px-4 space-y-6">
+            <div className="relative flex items-center justify-center mb-4">
+              <div className="absolute inset-0 bg-orange-500/20 blur-xl rounded-full animate-pulse"></div>
+              <div className="relative bg-orange-500/10 text-orange-400 p-5 rounded-full border border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.15)]">
+                <Cpu size={48} className="animate-bounce" style={{ animationDuration: '2s' }} />
+              </div>
+            </div>
 
-        <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-zinc-800">
+            <div className="flex flex-col items-center space-y-3 text-center min-h-[80px]">
+              <h3 className="text-lg font-semibold text-white">AI Processing in Progress</h3>
+              <p className="text-orange-400 font-medium transition-opacity duration-300 animate-pulse">
+                {FETCH_LOADING_TEXTS[loadingTextIdx]}
+              </p>
+            </div>
+            <p className="text-xs text-zinc-500 mt-4 max-w-[250px] text-center">
+              Please do not close this window. This may take a moment depending on candidate volume.
+            </p>
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-zinc-400 mb-6">Select job positions to sync new candidates from connected integrations.</p>
+
+            <div className="max-h-80 overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-950/50 p-2 mb-6 shadow-inner space-y-1 custom-scrollbar">
+              <label className="flex items-center gap-3 p-3 hover:bg-zinc-800/80 rounded-lg cursor-pointer border border-transparent hover:border-zinc-700 transition-all shadow-sm mb-2 group">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-orange-500 focus:ring-orange-500 focus:ring-offset-zinc-900"
+                  checked={positions.length > 0 && selectedPositionsForFetch.size === positions.length}
+                  onChange={(e) => handleSelectAllPositions(e.target.checked)}
+                />
+                <span className="text-sm font-medium text-zinc-200 group-hover:text-white transition-colors">Select All Positions</span>
+              </label>
+
+              {positions.map((p) => (
+                <label key={p.id} className="flex items-center gap-3 p-3 hover:bg-zinc-800/50 rounded-lg cursor-pointer border border-transparent hover:border-zinc-700 hover:shadow-sm transition-all group">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-orange-500 focus:ring-orange-500 focus:ring-offset-zinc-900"
+                    checked={selectedPositionsForFetch.has(p.id)}
+                    onChange={(e) => handleSelectPosition(p.id, e.target.checked)}
+                  />
+                  <span className="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors">{p.title}</span>
+                </label>
+              ))}
+              {positions.length === 0 && (
+                <p className="text-sm text-zinc-500 p-4 text-center">No positions available.</p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-zinc-800">
+              <button
+                onClick={() => setIsFetchModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-zinc-300 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleFetchSubmit}
+                disabled={fetchCandidates.isPending || selectedPositionsForFetch.size === 0}
+                className="px-4 py-2 text-sm font-medium bg-orange-600 hover:bg-orange-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {fetchCandidates.isPending && <Loader2 size={16} className="animate-spin" />}
+                Start Fetch
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
+
+      {/* Sync Notification Modal */}
+      <Modal
+        isOpen={!!syncNotification}
+        onClose={() => setSyncNotification(null)}
+        title={syncNotification?.title || 'Notification'}
+        size="md"
+      >
+        <div className="flex flex-col items-center justify-center py-6 text-center">
+          {syncNotification?.type === 'success' ? (
+            <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mb-6">
+              <CloudDownload size={32} />
+            </div>
+          ) : (
+            <div className="w-16 h-16 bg-sky-500/10 text-sky-400 rounded-full flex items-center justify-center mb-6">
+              <RefreshCw size={32} />
+            </div>
+          )}
+          <p className="text-zinc-300 text-lg mb-8 max-w-sm">
+            {syncNotification?.message}
+          </p>
           <button
-            onClick={() => setIsFetchDrawerOpen(false)}
-            className="rounded-lg px-4 py-2 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+            onClick={() => setSyncNotification(null)}
+            className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-semibold py-3 rounded-lg transition-colors"
           >
-            Cancel
-          </button>
-          <button
-            onClick={handleFetchSubmit}
-            disabled={selectedPositionsForFetch.size === 0 || fetchCandidates.isPending}
-            className="flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
-          >
-            {fetchCandidates.isPending && <Loader2 size={14} className="animate-spin" />}
-            {fetchCandidates.isPending ? 'Fetching...' : 'Start Fetch'}
+            Done
           </button>
         </div>
-      </Drawer>
+      </Modal>
 
       {candidateToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm p-4 animate-fade-in">

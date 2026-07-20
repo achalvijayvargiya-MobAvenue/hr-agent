@@ -7,12 +7,29 @@ Return ONLY a valid JSON array matching the following format for each candidate:
   {{
     "candidate_id": "<email>",
     "explanation": "<Strictly 2 concise sentences on general fit>",
+    "hook_summary": "<A punchy 1-sentence hook summarizing the candidate's core value proposition>",
+    "benchmarking_percentile": "<A string like 'Top 10% Match' based on their fit>",
     "key_strengths": ["<short phrase 1>", "<short phrase 2>", "<short phrase 3>"],
-    "recommendation": "<Strong Hire | Interview | Pass>",
+    "high_impact_achievements": [
+      {{"metric": "<A quantifiable number e.g. '30%' or '150+'>", "text": "<Short description of achievement>"}},
+      {{"metric": "<Another metric>", "text": "<Another achievement>"}}
+    ],
     "skills_scorecard": {{
-      "<Required Skill 1>": "<Score or 'missing'>",
-      "<Required Skill 2>": "<Score or 'missing'>"
+      "Strategy": <Score 0-100>,
+      "Operations": <Score 0-100>,
+      "Analytics": <Score 0-100>,
+      "Leadership": <Score 0-100>,
+      "Culture": <Score 0-100>
     }},
+    "career_velocity_milestones": [
+      {{"year": "<Year>", "event": "<Significant promotion or pivot>"}},
+      {{"year": "<Year>", "event": "<Another event>"}}
+    ],
+    "working_persona": {{
+      "collaborative_score": <Score 0-100 where 0 is Independent and 100 is Collaborative>,
+      "analytical_score": <Score 0-100 where 0 is Intuitive and 100 is Analytical>
+    }},
+    "recommendation": "<Strong Hire | Interview | Pass>",
     "culture_fit": "<Strictly 1-2 concise sentences on soft skills or cultural fit>"
   }},
   ...
