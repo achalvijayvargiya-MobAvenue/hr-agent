@@ -41,17 +41,20 @@ class Candidate(Base):
     domain_source: Mapped[str | None] = mapped_column(String, nullable=True)  # auto | manual
     domain_evidence: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
-    source_name: Mapped[str] = mapped_column(String, nullable=False, default="local_kb")
+    source_name: Mapped[str] = mapped_column(String, nullable=False, default="local_kb", index=True)
     source_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     cv_pdf: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.now(), nullable=False
+        DateTime, server_default=func.now(), nullable=False, index=True
     )
 
     @property
     def has_cv(self) -> bool:
+        from sqlalchemy.orm.attributes import instance_state
+        if 'cv_pdf' in instance_state(self).unloaded:
+            return True  # Assume true to prevent N+1 lazy loading over the network
         return self.cv_pdf is not None
 
     def __repr__(self) -> str:

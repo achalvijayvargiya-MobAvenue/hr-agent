@@ -32,6 +32,7 @@ from hr_agent.core.models.processing_log import ProcessingLog, ProcessingStatus
 from hr_agent.modules.candidates.schemas import (
     CandidateConflictResponse,
     CandidateImportResponse,
+    CandidatePaginatedResponse,
     CandidateResponse,
     CandidateUploadResponse,
     ResolveImportRequest,
@@ -422,15 +423,21 @@ def dismiss_import(import_id: str, db: Session = Depends(get_db)) -> Response:
     return Response(status_code=204)
 
 
-@router.get("", response_model=list[CandidateResponse])
+@router.get("", response_model=CandidatePaginatedResponse)
 def list_candidates(
     source_name: str | None = None,
     job_id: str | None = None,
     applicants_only: bool = False,
+    search: str | None = None,
+    page: int = 1,
+    limit: int = 50,
     db: Session = Depends(get_db),
-) -> list[CandidateResponse]:
-    """Return all candidates, optionally filtered by source_name and/or job_id."""
-    query = db.query(Candidate)
+) -> CandidatePaginatedResponse:
+    """Return candidates paginated, optionally filtered by source_name and/or job_id."""
+    import time
+    t0 = time.time()
+    from sqlalchemy.orm import defer
+    query = db.query(Candidate).options(defer(Candidate.cv_pdf), defer(Candidate.raw_text))
 
     if job_id:
         if applicants_only:
@@ -448,32 +455,58 @@ def list_candidates(
     if source_name:
         query = query.filter(Candidate.source_name == source_name)
 
-    candidates = query.order_by(Candidate.created_at.desc()).all()
+    if search:
+        search_term = f"%{search.lower()}%"
+        from sqlalchemy import func
+        query = query.filter(
+            func.lower(Candidate.name).like(search_term) |
+            func.lower(Candidate.email).like(search_term)
+        )
+
+    t1 = time.time()
+    total = query.count()
+    t2 = time.time()
+    candidates = query.order_by(Candidate.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+    t3 = time.time()
 
     results = []
     
+    status_map = {}
     if candidates:
         from hr_agent.modules.integrations.models import JobApplication
         candidate_emails = [c.email for c in candidates]
+        t4 = time.time()
         apps = db.query(JobApplication).filter(JobApplication.candidate_id.in_(candidate_emails)).all()
+        t5 = time.time()
         
         apps_by_candidate = {}
         for app in apps:
             if app.candidate_id not in apps_by_candidate:
                 apps_by_candidate[app.candidate_id] = {}
             apps_by_candidate[app.candidate_id][app.job_id] = app.status
+            
+        logs = db.query(ProcessingLog).filter(
+            ProcessingLog.entity_type == "candidate",
+            ProcessingLog.entity_id.in_(candidate_emails)
+        ).order_by(ProcessingLog.updated_at.asc()).all()
+        t6 = time.time()
+        
+        status_map = {log.entity_id: log.status for log in logs}
 
     for candidate in candidates:
-        log = (
-            db.query(ProcessingLog)
-            .filter_by(entity_id=candidate.email, entity_type="candidate")
-            .order_by(ProcessingLog.updated_at.desc())
-            .first()
-        )
-        proc_status = log.status if log else ProcessingStatus.PENDING
+        proc_status = status_map.get(candidate.email, ProcessingStatus.PENDING)
         app_statuses = apps_by_candidate.get(candidate.email, {}) if candidates else {}
         results.append(_candidate_response(candidate, proc_status, app_statuses))
-    return results
+        
+    t7 = time.time()
+    logger.info(f"API Times: Count={t2-t1:.2f}s, MainQuery={t3-t2:.2f}s, AppsQuery={t5-t4:.2f}s, LogsQuery={t6-t5:.2f}s, MapAndResponse={t7-t6:.2f}s, TotalDB={t7-t1:.2f}s")
+    
+    return CandidatePaginatedResponse(
+        total=total,
+        page=page,
+        limit=limit,
+        items=results
+    )
 
 
 @router.get("/{candidate_email}", response_model=CandidateResponse)

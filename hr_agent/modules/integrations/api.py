@@ -10,6 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, R
 from sqlalchemy.orm import Session
 
 from hr_agent.modules.candidates.api import _process_import
+from hr_agent.modules.matching.api import sync_zoho_status
 from hr_agent.core.deps import (
     get_current_user,
     get_db,
@@ -127,6 +128,18 @@ def fetch_candidates_for_position(
         new_count += 1
 
     db.commit()
+
+    def _sync_status_in_background(job_id: str):
+        from hr_agent.core.database import SessionLocal
+        bg_db = SessionLocal()
+        try:
+            sync_zoho_status(job_id, db=bg_db)
+        except Exception as exc:
+            logger.exception("[API:SOURCES] Background status sync failed for job %s: %s", job_id, exc)
+        finally:
+            bg_db.close()
+
+    background_tasks.add_task(_sync_status_in_background, position_id)
 
     logger.info(
         "[API:SOURCES] fetch position_id=%s  sources=%s  records=%d  new_imports=%d",

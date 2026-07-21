@@ -3,6 +3,13 @@ import api from '../../../lib/api'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
+export interface PaginatedResponse<T> {
+  total: number
+  page: number
+  limit: number
+  items: T[]
+}
+
 export interface Source {
   name: string
   display_name: string
@@ -118,15 +125,16 @@ export function useFetchCandidates() {
   })
 }
 
-export function useCandidates(sourceName?: string, jobId?: string, applicantsOnly?: boolean) {
-  return useQuery<Candidate[]>({
-    queryKey: ['candidates', sourceName, jobId, applicantsOnly],
+export function useCandidates(sourceName?: string, jobId?: string, applicantsOnly?: boolean, search?: string, page: number = 1, limit: number = 50) {
+  return useQuery<PaginatedResponse<Candidate>>({
+    queryKey: ['candidates', sourceName, jobId, applicantsOnly, search, page, limit],
     queryFn: async () => {
-      const params: Record<string, string | boolean> = {}
+      const params: Record<string, string | boolean | number> = { page, limit }
       if (sourceName) params.source_name = sourceName
       if (jobId) params.job_id = jobId
       if (applicantsOnly) params.applicants_only = true
-      const { data } = await api.get<Candidate[]>('/candidates', { params })
+      if (search) params.search = search
+      const { data } = await api.get<PaginatedResponse<Candidate>>('/candidates', { params })
       return data
     },
     refetchInterval: 5000,

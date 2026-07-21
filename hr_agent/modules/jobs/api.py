@@ -65,7 +65,7 @@ def _job_proc_status(db: Session, job_id: str) -> str:
     return log.status if log else ProcessingStatus.PENDING
 
 
-def _job_to_response(job: Job, db: Session) -> JobResponse:
+def _job_to_response(job: Job, db: Session, preloaded_status: str | None = None) -> JobResponse:
     return JobResponse(
         id=job.id,
         title=job.title,
@@ -91,7 +91,7 @@ def _job_to_response(job: Job, db: Session) -> JobResponse:
         candidates_required=job.candidates_required,
         position_status=job.position_status,
         created_by=job.created_by,
-        status=_job_proc_status(db, job.id),
+        status=preloaded_status if preloaded_status else _job_proc_status(db, job.id),
         created_at=job.created_at,
     )
 
@@ -711,7 +711,19 @@ def list_jobs(
     if created_by is not None:
         query = query.filter(Job.created_by == created_by)
     jobs = query.order_by(Job.created_at.desc()).all()
-    return [_job_to_response(job, db) for job in jobs]
+    
+    if not jobs:
+        return []
+        
+    job_ids = [j.id for j in jobs]
+    logs = db.query(ProcessingLog).filter(
+        ProcessingLog.entity_type == "job",
+        ProcessingLog.entity_id.in_(job_ids)
+    ).order_by(ProcessingLog.updated_at.asc()).all()
+    
+    status_map = {log.entity_id: log.status for log in logs}
+    
+    return [_job_to_response(job, db, preloaded_status=status_map.get(job.id, ProcessingStatus.PENDING)) for job in jobs]
 
 
 @router.get("/{job_id}", response_model=JobResponse)

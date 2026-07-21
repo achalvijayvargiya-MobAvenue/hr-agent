@@ -12,8 +12,8 @@ class JobApplication(Base):
     __table_args__ = (UniqueConstraint("job_id", "candidate_id", name="uq_app_job_candidate"),)
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"), nullable=False)
-    candidate_id: Mapped[str] = mapped_column(String, ForeignKey("candidates.email"), nullable=False)
+    job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"), nullable=False, index=True)
+    candidate_id: Mapped[str] = mapped_column(String, ForeignKey("candidates.email"), nullable=False, index=True)
     
     status: Mapped[str | None] = mapped_column(String, nullable=True)
     zoho_application_id: Mapped[str | None] = mapped_column(String, nullable=True)

@@ -127,3 +127,10 @@ class CandidateConflictResponse(BaseModel):
 
 class ResolveImportRequest(BaseModel):
     action: Literal["update", "keep"]
+
+
+class CandidatePaginatedResponse(BaseModel):
+    total: int
+    page: int
+    limit: int
+    items: list[CandidateResponse]

@@ -10,7 +10,8 @@ export function Omnibar() {
   const [selectedIndex, setSelectedIndex] = useState(0)
   
   const { data: positions = [] } = usePositions()
-  const { data: candidates = [] } = useCandidates()
+  const { data: paginatedData } = useCandidates(undefined, undefined, undefined, query)
+  const candidates = paginatedData?.items || []
   
   const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -47,13 +48,7 @@ export function Omnibar() {
     .filter((p) => p.title?.toLowerCase().includes(query.toLowerCase()) || p.id.toLowerCase().includes(query.toLowerCase()))
     .slice(0, 5)
 
-  const filteredCandidates = candidates
-    .filter((c) => 
-      c.name?.toLowerCase().includes(query.toLowerCase()) || 
-      c.email.toLowerCase().includes(query.toLowerCase()) || 
-      c.current_title?.toLowerCase().includes(query.toLowerCase())
-    )
-    .slice(0, 5)
+  const filteredCandidates = candidates.slice(0, 5)
 
   const allResults = [
     ...filteredPositions.map(p => ({ type: 'position', data: p })),

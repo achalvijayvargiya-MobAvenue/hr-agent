@@ -14,10 +14,10 @@ class JobCandidatePool(Base):
     __table_args__ = (UniqueConstraint("job_id", "candidate_id", name="uq_job_pool_candidate"),)
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"), nullable=False)
-    candidate_id: Mapped[str] = mapped_column(String, ForeignKey("candidates.email"), nullable=False)
+    job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"), nullable=False, index=True)
+    candidate_id: Mapped[str] = mapped_column(String, ForeignKey("candidates.email"), nullable=False, index=True)
 
-    pool_status: Mapped[str] = mapped_column(String, nullable=False, default="out_of_pool")
+    pool_status: Mapped[str] = mapped_column(String, nullable=False, default="out_of_pool", index=True)
     domain_match_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     subdomain_match_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     relevance_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)

@@ -171,12 +171,24 @@ export default function CandidatesPage() {
   const [jobFilter, setJobFilter] = useState('')
   const [nameSearch, setNameSearch] = useState('')
   const [applicantsOnly, setApplicantsOnly] = useState(false)
+  const [page, setPage] = useState(1)
+  const limit = 50
 
-  const { data: candidates = [], isLoading, isError } = useCandidates(
+  useEffect(() => {
+    setPage(1)
+  }, [sourceFilter, jobFilter, nameSearch, applicantsOnly])
+
+  const { data: paginatedData, isLoading, isError } = useCandidates(
     sourceFilter || undefined,
     jobFilter || undefined,
-    applicantsOnly
+    applicantsOnly,
+    nameSearch || undefined,
+    page,
+    limit
   )
+  const candidates = paginatedData?.items || []
+  const totalItems = paginatedData?.total || 0
+  const totalPages = Math.ceil(totalItems / limit)
   const { data: conflicts = [] } = useCandidateConflicts()
   const { data: imports = [] } = useCandidateImports()
   const deleteCandidate = useDeleteCandidate()
@@ -336,14 +348,7 @@ export default function CandidatesPage() {
     setUploading(false)
   }
 
-  const filtered = candidates.filter((c) => {
-    const term = nameSearch.toLowerCase()
-    if (!term) return true
-    return (
-      (c.name ?? '').toLowerCase().includes(term) ||
-      c.email.toLowerCase().includes(term)
-    )
-  })
+  // Backend handles search and pagination
 
   return (
     <div className="animate-fade-in w-full max-w-[1400px] mx-auto min-w-0 pb-12">
@@ -352,7 +357,7 @@ export default function CandidatesPage() {
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight text-white">Candidates</h1>
           <span className="inline-flex items-center rounded-md bg-zinc-800 px-2 py-1 text-xs font-medium text-zinc-300 border border-zinc-700 shadow-sm">
-            {filtered.length} candidate{filtered.length !== 1 ? 's' : ''}
+            {totalItems} candidate{totalItems !== 1 ? 's' : ''}
           </span>
           <input
             ref={fileInputRef}
@@ -364,15 +369,6 @@ export default function CandidatesPage() {
           />
         </div>
         <div className="flex gap-3">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="flex items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-medium text-orange-400 hover:bg-orange-500/20 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-            Upload CV
-          </button>
-
           {jobFilter && (
             <button
               onClick={() => {
@@ -395,6 +391,15 @@ export default function CandidatesPage() {
               Sync Status
             </button>
           )}
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-medium text-orange-400 hover:bg-orange-500/20 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+            Upload CV
+          </button>
 
           <button
             onClick={handleFetchClick}
@@ -514,7 +519,7 @@ export default function CandidatesPage() {
           Failed to load candidates. Please try again.
         </div>
       )}
-      {!isLoading && !isError && filtered.length === 0 && (
+      {!isLoading && !isError && candidates.length === 0 && (
         <div className="py-16 px-6 text-center bg-zinc-900/30 rounded-xl border border-zinc-800 animate-slide-up animate-stagger-2">
           <UsersIcon size={48} className="text-zinc-600 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-zinc-300">No candidates found</h3>
@@ -522,7 +527,7 @@ export default function CandidatesPage() {
         </div>
       )}
 
-      {filtered.length > 0 && (
+      {candidates.length > 0 && (
         <div className="animate-slide-up animate-stagger-2">
           <Table>
             <TableHeader>
@@ -539,7 +544,7 @@ export default function CandidatesPage() {
               </tr>
             </TableHeader>
             <TableBody>
-              {filtered.map((c) => (
+              {candidates.map((c) => (
                 <TableRow
                   key={c.email}
                   onClick={() => navigate(`/candidates/${encodeURIComponent(c.email)}`)}
@@ -586,6 +591,33 @@ export default function CandidatesPage() {
               ))}
             </TableBody>
           </Table>
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6 px-4 py-3 bg-zinc-900/50 border border-zinc-800 rounded-xl animate-slide-up">
+          <div className="text-sm text-zinc-400">
+            Showing <span className="font-medium text-zinc-200">{(page - 1) * limit + 1}</span> to{' '}
+            <span className="font-medium text-zinc-200">{Math.min(page * limit, totalItems)}</span> of{' '}
+            <span className="font-medium text-zinc-200">{totalItems}</span> results
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-3 py-1.5 text-sm font-medium rounded-md border border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-3 py-1.5 text-sm font-medium rounded-md border border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 transition-colors"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
 
