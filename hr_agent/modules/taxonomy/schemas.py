@@ -69,6 +69,7 @@ class PoolEntryResponse(BaseModel):
     relevance_score: float
     match_reason: str | None
     computed_at: datetime
+    application_status: str | None = None
 
 
 class PoolBuildResponse(BaseModel):

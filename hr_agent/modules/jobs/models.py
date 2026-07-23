@@ -52,9 +52,8 @@ class Job(Base):
     created_by: Mapped[str | None] = mapped_column(String, ForeignKey("users.id"), nullable=True)
 
     zoho_id: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
-    zoho_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-
-    raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    zoho_data: Mapped[dict | None] = mapped_column(JSON, nullable=True, deferred=True)
+    raw_text: Mapped[str | None] = mapped_column(Text, nullable=True, deferred=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )

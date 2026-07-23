@@ -60,6 +60,7 @@ function PoolRow({
       <td className="px-4 py-3 text-xs text-zinc-500 max-w-xs truncate" title={entry.match_reason ?? ''}>
         {entry.match_reason ?? '—'}
       </td>
+
       <td className="px-4 py-3 text-right">
         <div className="flex gap-1 justify-end">
           {!inPool && (
@@ -133,8 +134,8 @@ export default function CandidatePoolPanel({ positionId }: Props) {
   )
   const displayed = showAll ? entries : inPoolEntries
 
-  const error =
-    (buildPool.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+  const errorData = (buildPool.error as { response?: { data?: { detail?: string; message?: string } } })?.response?.data
+  const error = errorData?.message || errorData?.detail
 
   return (
     <div className="mt-6 glass-panel rounded-xl border border-orange-500/20 p-6 space-y-4 animate-slide-up animate-stagger-4">
@@ -170,12 +171,12 @@ export default function CandidatePoolPanel({ positionId }: Props) {
           <span className="text-zinc-600">·</span>
           <span className="text-zinc-400">{activePool.total_candidates} total evaluated</span>
           {activePool.computed_at && (
-            <>
-              <span className="text-zinc-600">·</span>
-              <span className="text-zinc-500 text-xs">
-                built {new Date(activePool.computed_at).toLocaleString()}
-              </span>
-            </>
+            <div className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-semibold shadow-[0_0_15px_rgba(249,115,22,0.15)] animate-pulse-slow">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Built {new Date(activePool.computed_at + (activePool.computed_at.endsWith('Z') ? '' : 'Z')).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })} IST
+            </div>
           )}
         </div>
       )}
@@ -208,6 +209,7 @@ export default function CandidatePoolPanel({ positionId }: Props) {
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-zinc-500 tracking-wider">Relevance</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-zinc-500 tracking-wider">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-zinc-500 tracking-wider">Reason</th>
+
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-zinc-500 tracking-wider">Actions</th>
                 </tr>
               </thead>

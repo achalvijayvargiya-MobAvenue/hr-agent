@@ -201,30 +201,44 @@ export default function CandidateDetailPage() {
         </Section>
       )}
 
-      <p className="text-xs text-zinc-500 pb-24">
-        Added {new Date(candidate.created_at).toLocaleString()}
-      </p>
+      <div className="pb-24 flex">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-semibold shadow-[0_0_15px_rgba(249,115,22,0.15)] animate-pulse-slow">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Added {new Date(candidate.created_at + (candidate.created_at.endsWith('Z') ? '' : 'Z')).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })} IST
+        </div>
+      </div>
 
       {/* Sticky Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-zinc-950/80 backdrop-blur-md border-t border-zinc-800 shadow-[0_-4px_20px_rgba(0,0,0,0.5)] transition-all sm:pl-64">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between">
-          <div className="text-sm text-zinc-400">
+          <div className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+            <svg className="w-4 h-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
             Candidate Actions
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             {candidate.has_cv && (
               <button
                 onClick={handleViewPdf}
-                className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-semibold text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 transition-colors cursor-pointer"
+                className="group flex items-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-2 text-sm font-semibold text-white shadow-[0_0_15px_rgba(249,115,22,0.4)] hover:shadow-[0_0_25px_rgba(249,115,22,0.6)] hover:brightness-110 transition-all cursor-pointer"
               >
+                <svg className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
                 View PDF Resume
               </button>
             )}
             <button
               onClick={handleDelete}
               disabled={deleteCandidate.isPending}
-              className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/20 hover:text-red-300 disabled:opacity-50 transition-colors"
+              className="group flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-400 hover:bg-red-500 hover:text-white disabled:opacity-50 transition-all shadow-[0_0_10px_rgba(239,68,68,0.1)] hover:shadow-[0_0_15px_rgba(239,68,68,0.4)]"
             >
+              <svg className="w-4 h-4 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
               {deleteCandidate.isPending ? 'Deleting…' : 'Delete'}
             </button>
           </div>

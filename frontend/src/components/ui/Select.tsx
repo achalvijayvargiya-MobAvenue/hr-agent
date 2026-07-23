@@ -36,9 +36,9 @@ export function Select({ value, onChange, options, placeholder = 'Select...', cl
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between gap-2 bg-transparent text-base font-semibold focus:outline-none focus:ring-0 cursor-pointer p-0 m-0 text-left disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full flex items-center justify-between gap-2 bg-transparent text-base font-semibold focus:outline-none focus:ring-0 cursor-pointer p-0 m-0 text-left disabled:opacity-50 disabled:cursor-not-allowed min-w-0"
       >
-        <span className={selectedOption ? 'text-white' : 'text-zinc-500'}>
+        <span className={`truncate flex-1 text-left ${selectedOption ? 'text-white' : 'text-zinc-500'}`}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 text-zinc-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}>

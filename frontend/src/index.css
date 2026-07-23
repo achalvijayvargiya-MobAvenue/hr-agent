@@ -60,3 +60,12 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #52525b; /* zinc-600 */
 }
+
+/* Fix for WebKit autofill changing background to white */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  transition: background-color 5000s ease-in-out 0s, color 5000s ease-in-out 0s;
+  -webkit-text-fill-color: #f4f4f5 !important;
+}

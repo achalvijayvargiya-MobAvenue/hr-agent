@@ -44,8 +44,8 @@ class Candidate(Base):
     source_name: Mapped[str] = mapped_column(String, nullable=False, default="local_kb", index=True)
     source_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
-    raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)
-    cv_pdf: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    raw_text: Mapped[str | None] = mapped_column(Text, nullable=True, deferred=True)
+    cv_pdf: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True, deferred=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False, index=True
     )

@@ -31,11 +31,18 @@ export default function PositionsPage() {
   const upload = useUploadPosition()
   const syncZoho = useSyncZohoPositions()
 
-  const [searchQuery, setSearchQuery] = useState('')
 
   const [uploadOpen, setUploadOpen] = useState(false)
   const [slideOverOpen, setSlideOverOpen] = useState(false)
-  const [syncNotification, setSyncNotification] = useState<{ title: string; message: string; type: 'info' | 'success' } | null>(null)
+  const [syncNotification, setSyncNotification] = useState<{
+    title: string;
+    message: string;
+    type: 'info' | 'success';
+    added?: number;
+    updated?: number;
+    added_titles?: string[];
+    updated_titles?: string[];
+  } | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -72,17 +79,8 @@ export default function PositionsPage() {
     })
   }
 
-  const filteredPositions = positions.filter((p) => {
-    if (!searchQuery) return true
-    const q = searchQuery.toLowerCase()
-    return (
-      (p.title && p.title.toLowerCase().includes(q)) ||
-      (p.department && p.department.toLowerCase().includes(q))
-    )
-  })
-
-  const processingPositions = filteredPositions.filter(p => p.status === 'EXTRACTED' || p.status === 'STRUCTURED')
-  const readyPositions = filteredPositions.filter(p => p.status !== 'EXTRACTED' && p.status !== 'STRUCTURED')
+  const processingPositions = positions.filter(p => p.status === 'EXTRACTED' || p.status === 'STRUCTURED')
+  const readyPositions = positions.filter(p => p.status !== 'EXTRACTED' && p.status !== 'STRUCTURED')
 
   return (
     <div className="animate-fade-in w-full max-w-[1400px] mx-auto min-w-0 pb-12">
@@ -102,13 +100,22 @@ export default function PositionsPage() {
                   if (data.added === 0 && data.updated === 0) {
                     setSyncNotification({
                       title: 'Up to Date',
-                      message: 'No new jobs found. Positions are already fully synced with Zoho.',
+                      message: 'Everything is up to date! No new changes were found in Zoho.',
                       type: 'info'
                     })
                   } else {
+                    let message = 'Zoho sync complete!\n';
+                    if (data.added > 0 && data.updated > 0) {
+                      message += `We just added ${data.added} brand new position(s) and updated ${data.updated} existing one(s).`;
+                    } else if (data.added > 0) {
+                      message += `We just added ${data.added} brand new position(s) to your workspace.`;
+                    } else if (data.updated > 0) {
+                      message += `We just updated ${data.updated} existing position(s) with the latest details.`;
+                    }
+
                     setSyncNotification({
                       title: 'Sync Successful',
-                      message: `Successfully added ${data.added} new position(s) and updated ${data.updated} existing position(s) from Zoho.`,
+                      message,
                       type: 'success'
                     })
                   }
@@ -122,7 +129,7 @@ export default function PositionsPage() {
             {syncZoho.isPending ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
             Fetch Positions
           </button>
-          
+
           <button
             onClick={() => setUploadOpen(true)}
             className="flex items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-medium text-orange-400 hover:bg-orange-500/20 transition-colors shadow-sm"
@@ -137,22 +144,6 @@ export default function PositionsPage() {
             <Plus size={16} />
             Create Manual
           </button>
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <div className="mb-6 flex animate-slide-up animate-stagger-1">
-        <div className="relative w-full max-w-md">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500">
-            <Search size={16} />
-          </div>
-          <input
-            type="text"
-            placeholder="Search positions by title or department..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-zinc-800 bg-zinc-900/50 pl-9 pr-4 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 transition-colors shadow-sm"
-          />
         </div>
       </div>
 
@@ -175,12 +166,6 @@ export default function PositionsPage() {
           <p className="text-zinc-500 mt-2 text-sm max-w-sm mx-auto">Get started by uploading a job description or creating a position manually.</p>
         </div>
       )}
-      {!isLoading && !isError && positions.length > 0 && filteredPositions.length === 0 && (
-        <div className="py-12 text-center text-zinc-500 text-sm bg-zinc-900/30 rounded-xl border border-zinc-800 animate-slide-up animate-stagger-2">
-          No positions match your search criteria.
-        </div>
-      )}
-
       {positions.length > 0 && (
         <div className="animate-slide-up animate-stagger-2">
           <Table>
@@ -289,22 +274,23 @@ export default function PositionsPage() {
         title={syncNotification?.title || 'Notification'}
         size="md"
       >
-        <div className="flex flex-col items-center justify-center py-6 text-center">
+        <div className="flex flex-col items-center justify-center w-full">
           {syncNotification?.type === 'success' ? (
-            <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mb-6">
-              <RefreshCw size={32} />
+            <div className="w-12 h-12 bg-orange-500/10 text-orange-400 rounded-full flex items-center justify-center mb-4 shadow-[0_0_15px_rgba(249,115,22,0.1)]">
+              <RefreshCw size={24} />
             </div>
           ) : (
-            <div className="w-16 h-16 bg-sky-500/10 text-sky-400 rounded-full flex items-center justify-center mb-6">
-              <RefreshCw size={32} />
+            <div className="w-12 h-12 bg-zinc-800 text-zinc-400 rounded-full flex items-center justify-center mb-4">
+              <RefreshCw size={24} />
             </div>
           )}
-          <p className="text-zinc-300 text-lg mb-8 max-w-sm">
+          <p className="text-zinc-300 text-base mb-8 max-w-sm text-center whitespace-pre-wrap">
             {syncNotification?.message}
           </p>
+
           <button
             onClick={() => setSyncNotification(null)}
-            className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-semibold py-3 rounded-lg transition-colors"
+            className="w-full bg-orange-600 hover:bg-orange-500 text-white font-medium py-2 rounded-lg transition-all duration-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
           >
             Done
           </button>

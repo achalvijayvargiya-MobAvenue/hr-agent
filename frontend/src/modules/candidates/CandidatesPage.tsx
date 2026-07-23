@@ -169,20 +169,15 @@ export default function CandidatesPage() {
 
   const [sourceFilter, setSourceFilter] = useState('')
   const [jobFilter, setJobFilter] = useState('')
-  const [nameSearch, setNameSearch] = useState('')
   const [applicantsOnly, setApplicantsOnly] = useState(false)
   const [page, setPage] = useState(1)
   const limit = 50
-
-  useEffect(() => {
-    setPage(1)
-  }, [sourceFilter, jobFilter, nameSearch, applicantsOnly])
 
   const { data: paginatedData, isLoading, isError } = useCandidates(
     sourceFilter || undefined,
     jobFilter || undefined,
     applicantsOnly,
-    nameSearch || undefined,
+    undefined,
     page,
     limit
   )
@@ -203,6 +198,9 @@ export default function CandidatesPage() {
   const [isFetchModalOpen, setIsFetchModalOpen] = useState(false)
   const [selectedPositionsForFetch, setSelectedPositionsForFetch] = useState<Set<string>>(new Set())
   const [candidateToDelete, setCandidateToDelete] = useState<{ email: string, name: string | null } | null>(null)
+  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false)
   const [syncNotification, setSyncNotification] = useState<{ title: string; message: string; type: 'info' | 'success' } | null>(null)
 
   const FETCH_LOADING_TEXTS = [
@@ -247,13 +245,13 @@ export default function CandidatesPage() {
       if (totalNewCandidates === 0) {
         setSyncNotification({
           title: 'Up to Date',
-          message: 'No new candidates were fetched from the sources. All integrated platforms are fully synced.',
+          message: 'Everything is up to date! No new candidates were found across your integrated platforms.',
           type: 'info'
         })
       } else {
         setSyncNotification({
           title: 'Sync Successful',
-          message: `Successfully fetched and queued ${totalNewCandidates} new candidate(s) for processing.`,
+          message: `Awesome! We successfully fetched ${totalNewCandidates} new candidate(s).\nThey are now queued for AI processing.`,
           type: 'success'
         })
       }
@@ -348,7 +346,56 @@ export default function CandidatesPage() {
     setUploading(false)
   }
 
+  const handleBulkDelete = async () => {
+    setBulkDeleting(true)
+    try {
+      await Promise.all(
+        Array.from(selectedEmails).map(email =>
+          api.delete(`/candidates/${encodeURIComponent(email)}`)
+        )
+      )
+      toast.success(`${selectedEmails.size} candidates deleted successfully.`)
+      setSelectedEmails(new Set())
+      queryClient.invalidateQueries({ queryKey: ['candidates'] })
+      setBulkDeleteModalOpen(false)
+    } catch {
+      toast.error('Failed to delete some candidates.')
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
+  const handleExportCSV = () => {
+    const selectedCandidates = candidates.filter(c => selectedEmails.has(c.email))
+    if (selectedCandidates.length === 0) return
+
+    const headers = ['Name', 'Email', 'Current Title', 'Location', 'Experience (Years)', 'Source']
+    const csvContent = [
+      headers.join(','),
+      ...selectedCandidates.map(c =>
+        [
+          `"${c.name || ''}"`,
+          `"${c.email}"`,
+          `"${c.current_title || ''}"`,
+          `"${c.location || ''}"`,
+          c.years_experience ?? '',
+          `"${c.source_name || ''}"`
+        ].join(',')
+      )
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `candidates_export_${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   // Backend handles search and pagination
+  const hasActiveFilters = !!(sourceFilter || jobFilter || applicantsOnly)
 
   return (
     <div className="animate-fade-in w-full max-w-[1400px] mx-auto min-w-0 pb-12">
@@ -457,23 +504,12 @@ export default function CandidatesPage() {
         </div>
       )}
 
-      {/* Filter bar */}
-      <div className="glass-panel rounded-xl p-4 flex flex-wrap gap-4 mb-5 animate-slide-up animate-stagger-1 items-center relative z-40">
-        <div className="relative flex-1 min-w-[240px] max-w-md">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <Search size={16} className="text-zinc-500" />
-          </div>
-          <input
-            type="text"
-            placeholder="Search by name or email…"
-            value={nameSearch}
-            onChange={(e) => setNameSearch(e.target.value)}
-            className="w-full rounded-lg border border-zinc-800 bg-zinc-900/50 pl-9 pr-4 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-orange-500 transition-colors shadow-sm"
-          />
-        </div>
+      {/* Filters */}
+      <div className="flex items-center gap-3 mb-5 animate-slide-up animate-stagger-1 relative z-40">
+        <span className="text-sm font-medium text-zinc-400">Filter by:</span>
         <Select
           value={jobFilter}
-          onChange={setJobFilter}
+          onChange={(val) => { setJobFilter(val); setPage(1); }}
           options={[
             { label: 'All positions', value: '' },
             ...Array.from(
@@ -484,12 +520,12 @@ export default function CandidatesPage() {
               ).values()
             ).map((p) => ({ label: p.title as string, value: p.id }))
           ]}
-          className="w-48 rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2.5 transition-colors"
+          className="w-56 rounded-lg border border-zinc-700 bg-zinc-950/50 px-3 py-2.5 transition-colors"
         />
         {jobFilter && (
           <Select
             value={applicantsOnly ? 'true' : 'false'}
-            onChange={(val) => setApplicantsOnly(val === 'true')}
+            onChange={(val) => { setApplicantsOnly(val === 'true'); setPage(1); }}
             options={[
               { label: 'Include AI Pool', value: 'false' },
               { label: 'Applicants Only', value: 'true' }
@@ -499,7 +535,7 @@ export default function CandidatesPage() {
         )}
         <Select
           value={sourceFilter}
-          onChange={setSourceFilter}
+          onChange={(val) => { setSourceFilter(val); setPage(1); }}
           options={[
             { label: 'All sources', value: '' },
             ...sources.map((src) => ({ label: src.name.replace(/_/g, ' '), value: src.name }))
@@ -519,7 +555,36 @@ export default function CandidatesPage() {
           Failed to load candidates. Please try again.
         </div>
       )}
-      {!isLoading && !isError && candidates.length === 0 && (
+      {!isLoading && !isError && candidates.length === 0 && hasActiveFilters && (
+        <div className="py-20 px-6 text-center bg-zinc-900/30 rounded-xl border border-zinc-800 animate-slide-up animate-stagger-2">
+          <div className="relative mx-auto w-24 h-24 mb-6">
+            <div className="absolute inset-0 bg-orange-500/20 blur-xl rounded-full animate-pulse"></div>
+            <div className="relative bg-zinc-900 border border-zinc-800 rounded-full w-full h-full flex items-center justify-center shadow-lg">
+              <Search size={40} className="text-zinc-600" />
+            </div>
+            <div className="absolute -bottom-2 -right-2 bg-orange-500 text-white rounded-full p-2 border-4 border-zinc-950 shadow-sm">
+              <UsersIcon size={16} />
+            </div>
+          </div>
+          <h3 className="text-xl font-semibold text-zinc-100">No candidates match your filters</h3>
+          <p className="text-zinc-400 mt-2 text-sm max-w-sm mx-auto mb-6">
+            We couldn't find anyone matching the current criteria. Try adjusting your filters or clearing them to see more candidates.
+          </p>
+          <button
+            onClick={() => {
+              setSourceFilter('')
+              setJobFilter('')
+              setApplicantsOnly(false)
+            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-orange-600/10 px-5 py-2.5 text-sm font-semibold text-orange-400 hover:bg-orange-600/20 transition-colors border border-orange-500/20 shadow-sm"
+          >
+            <RefreshCw size={16} />
+            Clear All Filters
+          </button>
+        </div>
+      )}
+
+      {!isLoading && !isError && candidates.length === 0 && !hasActiveFilters && (
         <div className="py-16 px-6 text-center bg-zinc-900/30 rounded-xl border border-zinc-800 animate-slide-up animate-stagger-2">
           <UsersIcon size={48} className="text-zinc-600 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-zinc-300">No candidates found</h3>
@@ -532,6 +597,20 @@ export default function CandidatesPage() {
           <Table>
             <TableHeader>
               <tr>
+                <TableHead className="w-12 text-center">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-orange-500 focus:ring-orange-500 focus:ring-offset-zinc-900 cursor-pointer"
+                    checked={candidates.length > 0 && selectedEmails.size === candidates.length}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedEmails(new Set(candidates.map(c => c.email)))
+                      } else {
+                        setSelectedEmails(new Set())
+                      }
+                    }}
+                  />
+                </TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Current Title</TableHead>
@@ -548,7 +627,24 @@ export default function CandidatesPage() {
                 <TableRow
                   key={c.email}
                   onClick={() => navigate(`/candidates/${encodeURIComponent(c.email)}`)}
+                  className="cursor-pointer group hover:bg-zinc-800/40 transition-colors"
                 >
+                  <TableCell className="w-12 text-center" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-orange-500 focus:ring-orange-500 focus:ring-offset-zinc-900 cursor-pointer"
+                      checked={selectedEmails.has(c.email)}
+                      onChange={(e) => {
+                        const newSet = new Set(selectedEmails)
+                        if (e.target.checked) {
+                          newSet.add(c.email)
+                        } else {
+                          newSet.delete(c.email)
+                        }
+                        setSelectedEmails(newSet)
+                      }}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium text-zinc-100 group-hover:text-orange-400">
                     {c.name ?? <span className="italic text-zinc-500">Processing…</span>}
                   </TableCell>
@@ -706,22 +802,22 @@ export default function CandidatesPage() {
         title={syncNotification?.title || 'Notification'}
         size="md"
       >
-        <div className="flex flex-col items-center justify-center py-6 text-center">
+        <div className="flex flex-col items-center justify-center w-full">
           {syncNotification?.type === 'success' ? (
-            <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mb-6">
-              <CloudDownload size={32} />
+            <div className="w-12 h-12 bg-orange-500/10 text-orange-400 rounded-full flex items-center justify-center mb-4 shadow-[0_0_15px_rgba(249,115,22,0.1)]">
+              <CloudDownload size={24} />
             </div>
           ) : (
-            <div className="w-16 h-16 bg-sky-500/10 text-sky-400 rounded-full flex items-center justify-center mb-6">
-              <RefreshCw size={32} />
+            <div className="w-12 h-12 bg-zinc-800 text-zinc-400 rounded-full flex items-center justify-center mb-4">
+              <RefreshCw size={24} />
             </div>
           )}
-          <p className="text-zinc-300 text-lg mb-8 max-w-sm">
+          <p className="text-zinc-300 text-base mb-6 max-w-sm text-center whitespace-pre-wrap">
             {syncNotification?.message}
           </p>
           <button
             onClick={() => setSyncNotification(null)}
-            className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-semibold py-3 rounded-lg transition-colors"
+            className="w-full bg-orange-600 hover:bg-orange-500 text-white font-medium py-2 rounded-lg transition-all duration-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
           >
             Done
           </button>
@@ -749,6 +845,75 @@ export default function CandidatesPage() {
                 className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50 transition-colors"
               >
                 {deleteCandidate.isPending && <Loader2 size={14} className="animate-spin" />}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Bulk Action Bar */}
+      {selectedEmails.size > 0 && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 animate-slide-up">
+          <div className="flex items-center gap-4 bg-zinc-900 border border-zinc-700 shadow-2xl rounded-full px-6 py-3">
+            <span className="text-sm font-medium text-white bg-orange-600 px-2.5 py-0.5 rounded-full shadow-sm">
+              {selectedEmails.size} selected
+            </span>
+
+            <div className="w-px h-6 bg-zinc-700"></div>
+
+            <button
+              onClick={handleExportCSV}
+              className="text-sm font-medium text-zinc-300 hover:text-white flex items-center gap-2 transition-colors group"
+            >
+              <CloudDownload size={16} className="text-zinc-500 group-hover:text-white transition-colors" />
+              Export CSV
+            </button>
+
+            <div className="w-px h-6 bg-zinc-700"></div>
+
+            <button
+              onClick={() => setBulkDeleteModalOpen(true)}
+              className="text-sm font-medium text-red-400 hover:text-red-300 flex items-center gap-2 transition-colors group"
+            >
+              <Trash2 size={16} className="text-red-500/70 group-hover:text-red-400 transition-colors" />
+              Delete Selected
+            </button>
+
+            <div className="w-px h-6 bg-zinc-700"></div>
+
+            <button
+              onClick={() => setSelectedEmails(new Set())}
+              className="text-sm font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Modal */}
+      {bulkDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl bg-zinc-900 border border-zinc-800 p-6 shadow-2xl animate-slide-up">
+            <h2 className="text-lg font-semibold text-zinc-100 mb-2">Delete {selectedEmails.size} Candidates</h2>
+            <p className="text-zinc-400 text-sm mb-6">
+              Are you sure you want to permanently delete {selectedEmails.size} candidate{selectedEmails.size > 1 ? 's' : ''}? This action cannot be undone.
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setBulkDeleteModalOpen(false)}
+                className="rounded-lg px-4 py-2 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={bulkDeleting}
+                className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50 transition-colors"
+              >
+                {bulkDeleting && <Loader2 size={14} className="animate-spin" />}
                 Delete
               </button>
             </div>

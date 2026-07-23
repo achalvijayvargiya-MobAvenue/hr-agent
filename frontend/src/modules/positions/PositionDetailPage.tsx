@@ -142,10 +142,8 @@ export default function PositionDetailPage() {
 
   const isDraft = positionStatus === 'DRAFT'
   const isBusy = update.isPending || approve.isPending || deletePosition.isPending
-  const actionError =
-    (update.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-    (approve.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-    (deletePosition.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+  const extractError = (err: any) => err?.response?.data?.message ?? err?.response?.data?.detail
+  const actionError = extractError(update.error) ?? extractError(approve.error) ?? extractError(deletePosition.error)
 
   return (
     <div className="animate-fade-in w-full max-w-[1400px] mx-auto space-y-6">
@@ -346,15 +344,34 @@ export default function PositionDetailPage() {
       {/* Sticky Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-zinc-950/80 backdrop-blur-md border-t border-zinc-800 shadow-[0_-4px_20px_rgba(0,0,0,0.5)] transition-all sm:pl-64">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between">
-          <div className="text-sm text-zinc-400">
-            {isBusy ? 'Saving...' : saveMessage ? <span className="text-orange-400">{saveMessage}</span> : 'Unsaved changes'}
+          <div className="text-sm text-zinc-400 flex items-center">
+            {isBusy ? (
+              <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-800 border border-zinc-700 animate-pulse">
+                <svg className="w-4 h-4 text-zinc-400 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Saving...
+              </span>
+            ) : saveMessage ? (
+              <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)] animate-pulse-slow">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                {saveMessage}
+              </span>
+            ) : (
+              'Unsaved changes'
+            )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <button
               onClick={handleDelete}
               disabled={isBusy}
-              className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/20 hover:text-red-300 disabled:opacity-50 transition-colors"
+              className="group flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-400 hover:bg-red-500 hover:text-white disabled:opacity-50 transition-all shadow-[0_0_10px_rgba(239,68,68,0.1)] hover:shadow-[0_0_15px_rgba(239,68,68,0.4)]"
             >
+              <svg className="w-4 h-4 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
               Delete
             </button>
             {isDraft && (
@@ -369,8 +386,11 @@ export default function PositionDetailPage() {
             <button
               onClick={handleSave}
               disabled={isBusy}
-              className="rounded-lg bg-orange-600 px-6 py-2 text-sm font-semibold text-white shadow-lg shadow-orange-900/50 hover:bg-orange-500 disabled:opacity-50 transition-colors"
+              className="group flex items-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-2 text-sm font-semibold text-white shadow-[0_0_15px_rgba(249,115,22,0.4)] hover:shadow-[0_0_25px_rgba(249,115,22,0.6)] hover:brightness-110 disabled:opacity-50 transition-all"
             >
+              <svg className="w-4 h-4 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
               {update.isPending ? 'Saving…' : 'Save Changes'}
             </button>
           </div>

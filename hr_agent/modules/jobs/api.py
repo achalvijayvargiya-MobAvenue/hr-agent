@@ -8,7 +8,7 @@ import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, UploadFile
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from hr_agent.core.deps import (
     extract_pdf_text,
@@ -23,6 +23,7 @@ from hr_agent.core.errors import ConflictError, NotFoundError
 from hr_agent.core.models.embedding import Embedding
 from hr_agent.modules.jobs.models import Job
 from hr_agent.modules.matching.models import MatchResult
+from hr_agent.modules.integrations.models import JobApplication
 from hr_agent.modules.matching.pool_models import JobCandidatePool
 from hr_agent.core.models.processing_log import ProcessingLog, ProcessingStatus
 from hr_agent.modules.users.models import User
@@ -96,7 +97,7 @@ def _job_to_response(job: Job, db: Session, preloaded_status: str | None = None)
     )
 
 
-def _pool_entry_response(row: JobCandidatePool, candidate: Candidate | None) -> PoolEntryResponse:
+def _pool_entry_response(row: JobCandidatePool, candidate: Candidate | None, application_status: str | None = None) -> PoolEntryResponse:
     return PoolEntryResponse(
         candidate_id=row.candidate_id,
         candidate_name=candidate.name if candidate else None,
@@ -109,14 +110,24 @@ def _pool_entry_response(row: JobCandidatePool, candidate: Candidate | None) -> 
         relevance_score=row.relevance_score,
         match_reason=row.match_reason,
         computed_at=row.computed_at,
+        application_status=application_status,
     )
 
 
 def _pool_build_response(job_id: str, rows: list[JobCandidatePool], db: Session) -> PoolBuildResponse:
     cand_ids = [r.candidate_id for r in rows]
-    candidates = db.query(Candidate).filter(Candidate.email.in_(cand_ids)).all() if cand_ids else []
+    candidates = db.query(Candidate).options(
+        load_only(
+            Candidate.email, Candidate.name, Candidate.current_title,
+            Candidate.domain_code, Candidate.subdomain_codes
+        )
+    ).filter(Candidate.email.in_(cand_ids)).all() if cand_ids else []
     cand_map = {c.email: c for c in candidates}
-    entries = [_pool_entry_response(r, cand_map.get(r.candidate_id)) for r in rows]
+    
+    apps = db.query(JobApplication).filter(JobApplication.job_id == job_id, JobApplication.candidate_id.in_(cand_ids)).all() if cand_ids else []
+    app_map = {a.candidate_id: a.status for a in apps}
+
+    entries = [_pool_entry_response(r, cand_map.get(r.candidate_id), app_map.get(r.candidate_id)) for r in rows]
     computed_at = max((r.computed_at for r in rows), default=datetime.now(timezone.utc))
     in_pool = sum(1 for r in rows if r.pool_status in ("in_pool", "manual_add"))
     return PoolBuildResponse(

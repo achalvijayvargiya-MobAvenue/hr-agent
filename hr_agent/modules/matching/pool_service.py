@@ -15,6 +15,7 @@ from hr_agent.core.config import Settings
 from hr_agent.modules.candidates.models import Candidate
 from hr_agent.modules.jobs.models import Job
 from hr_agent.modules.matching.pool_models import JobCandidatePool
+from hr_agent.modules.integrations.models import JobApplication
 import hr_agent.modules.taxonomy.taxonomy_service as taxonomy_service
 
 logger = logging.getLogger(__name__)
@@ -95,11 +96,20 @@ class PoolService:
             if row.pool_status in ("manual_add", "manual_exclude")
         }
 
+        hired_candidates = {
+            app.candidate_id
+            for app in db.query(JobApplication).filter(JobApplication.status.ilike('%hired%')).all()
+            if app.status and "hired" in app.status.lower()
+        }
+
         db.query(JobCandidatePool).filter_by(job_id=job_id).delete()
 
-        candidates = db.query(Candidate).all()
+        if hired_candidates:
+            candidates = db.query(Candidate).filter(Candidate.email.notin_(hired_candidates)).all()
+        else:
+            candidates = db.query(Candidate).all()
+
         now = datetime.now(timezone.utc)
-        results: list[JobCandidatePool] = []
 
         for candidate in candidates:
             override = manual.get(candidate.email)
@@ -122,9 +132,11 @@ class PoolService:
                 row = self._score_candidate(job, candidate, now)
 
             db.add(row)
-            results.append(row)
 
         db.commit()
+
+        # Reload all rows in a single query to prevent N+1 lazy loading when returning
+        results = db.query(JobCandidatePool).filter_by(job_id=job.id).all()
 
         in_pool = sum(1 for r in results if r.pool_status in ("in_pool", "manual_add"))
         logger.info(

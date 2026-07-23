@@ -75,6 +75,7 @@ export interface PoolEntry {
   relevance_score: number
   match_reason: string | null
   computed_at: string
+  application_status: string | null
 }
 
 export interface PoolResult {

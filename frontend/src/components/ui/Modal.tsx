@@ -41,7 +41,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
         onClick={(e) => e.target === overlayRef.current && onClose()}
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-sm animate-fade-in"
       >
-        <div className={`relative flex flex-col bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden ${sizeClasses[size]}`}>
+        <div className={`relative flex flex-col bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden max-h-[90vh] ${sizeClasses[size]}`}>
           <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-900/50">
             <h2 className="text-lg font-semibold text-zinc-100 truncate">{title}</h2>
             <button
