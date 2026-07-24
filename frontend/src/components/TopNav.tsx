@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { useLocation, Link } from 'react-router-dom'
-import { LogOut, Search, ChevronRight, Home } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { LogOut, Search } from 'lucide-react'
 import { useCurrentUser, useLogout } from '../modules/auth/useAuth'
 
 export default function TopNav() {
@@ -8,8 +8,6 @@ export default function TopNav() {
   const logout = useLogout()
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const location = useLocation()
-
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -20,9 +18,6 @@ export default function TopNav() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Generate basic breadcrumbs
-  const pathnames = location.pathname.split('/').filter((x) => x)
-
   return (
     <header className="grid grid-cols-2 md:grid-cols-[1fr_auto_1fr] items-center gap-4 h-14 bg-zinc-900 border-b border-zinc-800 px-4 text-zinc-300 animate-fade-in shrink-0 z-20 shadow-sm relative">
       <div className="flex items-center gap-4 h-full min-w-0">
@@ -31,31 +26,6 @@ export default function TopNav() {
             <img src="/logo-removebg-preview.png" alt="Mobavenue" className="h-8 object-contain" />
           </Link>
         </div>
-
-        {/* Breadcrumbs */}
-        <nav className="hidden md:flex items-center text-sm font-medium text-zinc-400 bg-zinc-950/50 rounded-lg border border-zinc-800/50 px-3 py-1.5 shadow-inner min-w-0 overflow-hidden">
-          <Link to="/" className="flex items-center gap-1.5 hover:text-orange-400 transition-colors shrink-0">
-            <Home size={14} className="mb-[1px]" />
-            Home
-          </Link>
-          {pathnames.map((name, index) => {
-            const decodedName = decodeURIComponent(name).replace(/-/g, ' ')
-            const routeTo = `/${pathnames.slice(0, index + 1).join('/')}`
-            const isLast = index === pathnames.length - 1
-            return (
-              <div key={name} className="flex items-center min-w-0">
-                <ChevronRight size={14} className="mx-2 text-zinc-600 shrink-0" />
-                {isLast ? (
-                  <span className="text-zinc-100 capitalize font-semibold drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] truncate">{decodedName}</span>
-                ) : (
-                  <Link to={routeTo} className="hover:text-zinc-100 hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.2)] transition-all capitalize truncate block">
-                    {decodedName}
-                  </Link>
-                )}
-              </div>
-            )
-          })}
-        </nav>
       </div>
 
       {/* Centered Search */}

@@ -77,3 +77,66 @@ class EmailService:
         except Exception as e:
             logger.error(f"Failed to send email to {email_to}: {e}")
             return False
+
+    def send_verification_code_email(self, email_to: str, code: str) -> bool:
+        if not self.settings.smtp_host or not self.settings.smtp_user:
+            logger.warning("SMTP not configured. Cannot send email.")
+            # For local testing when SMTP is not configured, we'll print it
+            print(f"\n[EMAIL MOCK] Verification code for {email_to} is: {code}\n")
+            return True # Pretend it succeeded for local dev
+
+        subject = "Your Verification Code - HR Platform"
+        
+        # HTML body
+        html = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <p>Hello,</p>
+                <p>Your verification code for HR Platform registration is:</p>
+                <h2 style="font-size: 32px; letter-spacing: 4px; color: #4f46e5;">{code}</h2>
+                <p style="font-size: 0.9em; color: #666;">
+                    This code will expire in 3 minutes.<br/>
+                    If you did not request this code, please ignore this email.
+                </p>
+                <br/>
+                <p>Thank you,</p>
+                <p>HR Platform Team</p>
+            </body>
+        </html>
+        """
+
+        text = f"""
+        Hello,
+
+        Your verification code for HR Platform registration is:
+        {code}
+
+        This code will expire in 3 minutes.
+        If you did not request this code, please ignore this email.
+
+        Thank you,
+        HR Platform Team
+        """
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = self.settings.emails_from_email or self.settings.smtp_user
+        msg["To"] = email_to
+
+        part1 = MIMEText(text, "plain")
+        part2 = MIMEText(html, "html")
+        
+        msg.attach(part1)
+        msg.attach(part2)
+
+        try:
+            with smtplib.SMTP(self.settings.smtp_host, self.settings.smtp_port) as server:
+                server.starttls()
+                server.login(self.settings.smtp_user, self.settings.smtp_password)
+                server.sendmail(msg["From"], [email_to], msg.as_string())
+            logger.info(f"Verification code email sent to {email_to}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send email to {email_to}: {e}")
+            return False
+

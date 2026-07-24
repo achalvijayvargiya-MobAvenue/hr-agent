@@ -8,9 +8,12 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 from hr_agent.core.security import create_access_token, decode_access_token, hash_password, verify_password
 from hr_agent.modules.users.role import Role
-from hr_agent.modules.users.models import User
+from hr_agent.modules.users.models import User, EmailVerificationCode
 from hr_agent.modules.users.user_role import UserRole
 from hr_agent.modules.users.schemas import UserCreate, UserUpdate
+import random
+import string
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -31,16 +34,44 @@ class AuthService:
 
     # ── Public API ────────────────────────────────────────────────────────────
 
+    def generate_verification_code(self, email: str) -> str:
+        """Generate and store a 6-digit verification code for the email."""
+        # Clean up existing codes for this email
+        self._db.query(EmailVerificationCode).filter_by(email=email).delete()
+        
+        # Generate 6-digit code
+        code = ''.join(random.choices(string.digits, k=6))
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=3)
+        
+        # Make sure datetime is naive if SQLite or follow DB conventions
+        # For timezone-naive DBs, use UTC naive:
+        expires_at = datetime.utcnow() + timedelta(minutes=3)
+        
+        record = EmailVerificationCode(email=email, code=code, expires_at=expires_at)
+        self._db.add(record)
+        self._db.commit()
+        return code
+
     def register(self, data: UserCreate) -> User:
-        """Create a new user. Raises ValueError if the email is already taken."""
+        """Create a new user. Raises ValueError if the email is already taken or code is invalid."""
         if self._db.query(User).filter_by(email=data.email).first():
             raise ValueError(f"Email already registered: {data.email}")
+            
+        # Verify the code
+        verification_record = self._db.query(EmailVerificationCode).filter_by(email=data.email, code=data.verification_code).first()
+        if not verification_record:
+            raise ValueError("Invalid verification code")
+        if verification_record.expires_at < datetime.utcnow():
+            raise ValueError("Verification code has expired")
+
         user = User(
             email=data.email,
             hashed_password=hash_password(data.password),
             full_name=data.full_name,
         )
         self._db.add(user)
+        # Delete used code
+        self._db.delete(verification_record)
         self._db.commit()
         self._db.refresh(user)
         logger.info("Registered new user email=%s id=%s", user.email, user.id)
@@ -160,3 +191,12 @@ class AuthService:
     def list_roles(self) -> list[Role]:
         """Return all roles defined in the system."""
         return self._db.query(Role).all()
+
+    def delete_expired_verification_codes(self) -> int:
+        """Delete all expired email verification codes from the database."""
+        now = datetime.utcnow()
+        deleted_count = self._db.query(EmailVerificationCode).filter(EmailVerificationCode.expires_at < now).delete()
+        self._db.commit()
+        if deleted_count > 0:
+            logger.info("Deleted %d expired verification codes", deleted_count)
+        return deleted_count

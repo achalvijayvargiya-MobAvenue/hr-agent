@@ -6,6 +6,7 @@ from pydantic import BaseModel, field_validator
 class UserCreate(BaseModel):
     email: str
     password: str
+    verification_code: str
     full_name: str | None = None
 
     @field_validator("email")
@@ -49,3 +50,14 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
+
+
+class SendVerificationCodeRequest(BaseModel):
+    email: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_domain(cls, v: str) -> str:
+        if not v.endswith("@mobavenue.com"):
+            raise ValueError("Only @mobavenue.com email addresses are allowed.")
+        return v

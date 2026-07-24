@@ -7,14 +7,17 @@ GET  /auth/me        — return the current user's profile
 """
 import logging
 
+import asyncio
+
 from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from hr_agent.core.deps import get_current_user, get_db
+from hr_agent.core.database import SessionLocal
 from hr_agent.core.config import get_settings
 from hr_agent.core.errors import ConflictError, UnauthorizedError
 from hr_agent.modules.users.models import User
-from hr_agent.modules.users.schemas import LoginRequest, TokenResponse, UserCreate, UserResponse, ForgotPasswordRequest, ResetPasswordRequest
+from hr_agent.modules.users.schemas import LoginRequest, TokenResponse, UserCreate, UserResponse, ForgotPasswordRequest, ResetPasswordRequest, SendVerificationCodeRequest
 from hr_agent.modules.users.service import AuthService
 from hr_agent.core.services.email_service import EmailService
 
@@ -34,8 +37,32 @@ def _build_user_response(user, svc: AuthService) -> UserResponse:
         created_at=user.created_at,
     )
 
+async def delete_code_after_delay(delay: int):
+    """Wait for `delay` seconds, then delete all expired verification codes."""
+    await asyncio.sleep(delay)
+    with SessionLocal() as db:
+        svc = AuthService(db)
+        svc.delete_expired_verification_codes()
+
 
 # ── Routes ────────────────────────────────────────────────────────────────────
+
+@router.post("/send-verification-code")
+def send_verification_code(
+    body: SendVerificationCodeRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    svc = AuthService(db)
+    # Check if user already exists
+    if db.query(User).filter_by(email=body.email).first():
+        raise ConflictError(message=f"Email already registered: {body.email}")
+        
+    code = svc.generate_verification_code(body.email)
+    email_svc = EmailService()
+    background_tasks.add_task(email_svc.send_verification_code_email, body.email, code)
+    background_tasks.add_task(delete_code_after_delay, 180)  # 3 minutes delay
+    return {"message": "Verification code sent."}
 
 @router.post("/register", response_model=UserResponse, status_code=201)
 def register(body: UserCreate, db: Session = Depends(get_db)) -> UserResponse:

@@ -24,3 +24,18 @@ class User(Base):
 
     def __repr__(self) -> str:
         return f"<User id={self.id!r} email={self.email!r}>"
+
+
+class EmailVerificationCode(Base):
+    __tablename__ = "email_verification_codes"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    email: Mapped[str] = mapped_column(String, index=True, nullable=False)
+    code: Mapped[str] = mapped_column(String, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return f"<EmailVerificationCode email={self.email!r} code={self.code!r}>"

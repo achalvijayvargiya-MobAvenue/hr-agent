@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useForgotPassword } from './useAuth'
+import { FormError } from '../../components/ui/FormError'
+import { FormSuccess } from '../../components/ui/FormSuccess'
+import { getErrorMessage } from '../../lib/utils/error'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -24,9 +27,7 @@ export default function ForgotPasswordPage() {
 
         {forgotPassword.isSuccess ? (
           <div className="text-center space-y-4 animate-fade-in" style={{ animationDelay: '200ms' }}>
-            <div className="p-4 bg-orange-500/10 text-orange-400 rounded-lg border border-orange-500/20">
-              If an account exists with that email address, we have sent a password reset link to it. Please check your inbox.
-            </div>
+            <FormSuccess message="If an account exists with that email address, we have sent a password reset link to it. Please check your inbox." />
             <Link to="/login" className="block w-full rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 hover:shadow-orange-500/25 hover:shadow-lg transition-all duration-200">
               Return to Login
             </Link>
@@ -47,6 +48,8 @@ export default function ForgotPasswordPage() {
                 placeholder="you@example.com"
               />
             </div>
+
+            <FormError message={getErrorMessage(forgotPassword.error)} />
 
             <button
               type="submit"

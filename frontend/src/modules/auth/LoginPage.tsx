@@ -2,6 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useLogin } from './useAuth'
 import { Eye, EyeOff } from 'lucide-react'
+import { FormError } from '../../components/ui/FormError'
+import { FormSuccess } from '../../components/ui/FormSuccess'
+import { getErrorMessage } from '../../lib/utils/error'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -27,11 +30,7 @@ export default function LoginPage() {
           <p className="mt-2 text-sm text-zinc-400">Sign in to your account</p>
         </div>
 
-        {successMessage && (
-          <div className="mb-4 p-3 bg-orange-500/10 text-orange-400 rounded-lg text-sm border border-orange-500/20 text-center animate-fade-in">
-            {successMessage}
-          </div>
-        )}
+        <FormSuccess message={successMessage} />
 
         <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in" style={{ animationDelay: '200ms' }}>
           <div>
@@ -82,12 +81,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {login.isError && (
-            <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 animate-fade-in">
-              {(login.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-                'Invalid email or password.'}
-            </p>
-          )}
+          <FormError message={getErrorMessage(login.error)} />
 
           <button
             type="submit"

@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useResetPassword } from './useAuth'
+import { FormError } from '../../components/ui/FormError'
+import { FormSuccess } from '../../components/ui/FormSuccess'
+import { getErrorMessage } from '../../lib/utils/error'
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
@@ -40,9 +43,7 @@ export default function ResetPasswordPage() {
 
         {resetPassword.isSuccess ? (
           <div className="text-center space-y-4 animate-fade-in" style={{ animationDelay: '200ms' }}>
-            <div className="p-4 bg-orange-500/10 text-orange-400 rounded-lg border border-orange-500/20">
-              Your password has been successfully reset!
-            </div>
+            <FormSuccess message="Your password has been successfully reset!" />
             <Link to="/login" className="block w-full rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 hover:shadow-orange-500/25 hover:shadow-lg transition-all duration-200">
               Go to Login
             </Link>
@@ -79,11 +80,7 @@ export default function ResetPasswordPage() {
               />
             </div>
 
-            {(localError || resetPassword.isError) && (
-              <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 animate-fade-in">
-                {localError || ((resetPassword.error as any)?.response?.data?.detail ?? 'An error occurred. Your token may be invalid or expired.')}
-              </p>
-            )}
+            <FormError message={localError || getErrorMessage(resetPassword.error)} />
 
             <button
               type="submit"

@@ -24,11 +24,20 @@ export function useCurrentUser() {
   })
 }
 
+export function useSendVerificationCode() {
+  return useMutation({
+    mutationFn: async (credentials: { email: string }) => {
+      const { data } = await api.post('/auth/send-verification-code', credentials)
+      return data
+    },
+  })
+}
+
 export function useRegister() {
   const navigate = useNavigate()
 
   return useMutation({
-    mutationFn: async (credentials: { email: string; password: string; full_name?: string }) => {
+    mutationFn: async (credentials: { email: string; password: string; verification_code: string; full_name?: string }) => {
       const { data } = await api.post('/auth/register', credentials)
       return data
     },
